@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<app-layout>
+
+<layout main-frame="true" location="0,0" size="800,600" state="0">
+<westToolbar>
+<dockable id="three"></dockable>
+</westToolbar>
+<eastToolbar>
+<dockable id="four"></dockable>
+<dockable id="five"></dockable>
+<dockable id="six"></dockable>
+</eastToolbar>
+<southToolbar>
+<dockable id="seven"></dockable>
+<dockable id="eight"></dockable>
+</southToolbar>
+<simple persistentID="two">
+<properties></properties>
+
+</simple>
+</layout>
+</app-layout>

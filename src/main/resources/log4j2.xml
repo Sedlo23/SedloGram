@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration>
+    <Appenders>
+        <AsyncTextArea name="TextAreaAppender">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS}: %-5level - %c{} - %msg%n"/>
+        </AsyncTextArea>
+
+        <Async name="AsyncAppender" bufferSize="1000" includeLocation="true">
+            <AppenderRef ref="TextAreaAppender"/>
+        </Async>
+    </Appenders>
+
+    <Loggers>
+        <Root level="trace">
+            <AppenderRef ref="AsyncAppender"/>
+        </Root>
+    </Loggers>
+</Configuration>
