@@ -37,6 +37,12 @@ public class TelegramDecoder {
         String inputDataBits = hex2Bin(hexString);
         LOG.debug("Converted HEX to binary. Length = {} bits.", inputDataBits.length());
 
+        if(hexString.isEmpty()) {
+            LOG.error("Prázdný hexstring");
+
+            return "";
+        }
+
         BigInteger inputBigInt = new BigInteger(hexString, 16); // (kept for reference if needed)
         LOG.trace("Created BigInteger from hex: [{}]", inputBigInt.toString(16));
 

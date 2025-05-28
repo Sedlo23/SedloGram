@@ -9,6 +9,9 @@ import tools.string.StringHelper;
 import javax.swing.*;
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Main controller for application logic with repository change notifications
@@ -519,5 +522,28 @@ public class EditorController {
                 .replace("\\\\", "\\");
     }
 
+    // Add to EditorController class
+    private final ExecutorService backgroundExecutor =
+            Executors.newFixedThreadPool(
+                    Math.max(2, Runtime.getRuntime().availableProcessors() - 1),
+                    r -> {
+                        Thread t = new Thread(r, "SZIF-Background-Worker");
+                        t.setDaemon(true);
+                        return t;
+                    }
+            );
+
+    // Add this method to properly shutdown threads when application closes
+    public void shutdown() {
+        backgroundExecutor.shutdown();
+        try {
+            if (!backgroundExecutor.awaitTermination(3, TimeUnit.SECONDS)) {
+                backgroundExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            backgroundExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
 
 }

@@ -12,7 +12,7 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
-      <module name="SedloGram" options="--add-exports jdk.jfr/jdk.jfr.internal.test=ALL-UNNAMED" />
+      <module name="SedloGram" options="" />
     </option>
   </component>
 </project>

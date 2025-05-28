@@ -13,6 +13,7 @@ import packets.Var.T.T_EMA;
 import packets.Var.V.V_EMA;
 import packets.Var.V.V_MAIN;
 import tools.crypto.ArithmeticalFunctions;
+import tools.packetgraph.CustomStrokeRenderer;
 import tools.ui.GUIHelper;
 import tools.string.HTMLTagGenerator;
 import net.miginfocom.swing.MigLayout;
@@ -129,7 +130,7 @@ public class P12 extends Packet {
         chartPanel.setMouseWheelEnabled(true);
 
         XYPlot plot = (XYPlot) chart.getPlot();
-        plot.setRenderer(new P27.CustomStrokeRenderer());
+        plot.setRenderer(new CustomStrokeRenderer());
 
         StandardChartTheme theme = createModernTheme();
         theme.apply(chart);
@@ -153,7 +154,7 @@ public class P12 extends Packet {
         chartPanel.setMouseWheelEnabled(true);
 
         plot = (XYPlot) chart.getPlot();
-        plot.setRenderer(new P27.CustomStrokeRenderer());
+        plot.setRenderer(new CustomStrokeRenderer());
 
         theme = createModernTheme();
         theme.apply(chart);

@@ -2,6 +2,8 @@ package packets.TrackToTrain;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jfree.chart.*;
+import org.jfree.chart.renderer.xy.XYItemRenderer;
 import packets.Interfaces.IterationData;
 import packets.Var.A.G_A;
 import packets.Var.D.D_GRADIENT;
@@ -12,14 +14,12 @@ import packets.Var.Q.Q_DIR;
 import packets.Var.Q.Q_GDIR;
 import packets.Var.Q.Q_SCALE;
 import tools.crypto.ArithmeticalFunctions;
+import tools.packetgraph.CustomNumberAxis;
+import tools.packetgraph.CustomStrokeRenderer;
 import tools.ui.GUIHelper;
 import tools.string.HTMLTagGenerator;
 import net.miginfocom.swing.MigLayout;
 
-import org.jfree.chart.ChartFactory;
-import org.jfree.chart.ChartPanel;
-import org.jfree.chart.StandardChartTheme;
-import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
@@ -30,6 +30,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Collections;
 
 import static tools.ui.GUIHelper.createModernTheme;
 
@@ -102,9 +103,12 @@ public class P21 extends Packet {
         chartPanel.setMouseWheelEnabled(true);
 
         XYPlot plot = (XYPlot) chart.getPlot();
-        plot.setRenderer(new P27.CustomStrokeRenderer());
+
+        // Custom stroke renderer
+        plot.setRenderer(new CustomStrokeRenderer());
 
         StandardChartTheme theme = createModernTheme();
+
         theme.apply(chart);
 
         
@@ -168,9 +172,16 @@ public class P21 extends Packet {
 
         xySeries2.add(32676, y * z);
 
+
+
+
         XYPlot plot = (XYPlot) chart.getPlot();
+
         NumberAxis newAxis = new NumberAxis("Vzdálenost [" + q_scale.getCombo().get(q_scale.getDecValue()) + "]");
+
         plot.setDomainAxis(newAxis);
+
+        
 
         
     }

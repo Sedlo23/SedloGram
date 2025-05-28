@@ -10,6 +10,7 @@ import packets.Var.NID.NID_BG;
 import packets.Var.NID.NID_PACKET;
 import packets.Var.Q.*;
 import tools.crypto.ArithmeticalFunctions;
+import tools.packetgraph.CustomStrokeRenderer;
 import tools.ui.GUIHelper;
 import tools.string.HTMLTagGenerator;
 import net.miginfocom.swing.MigLayout;
@@ -96,7 +97,7 @@ public class P5 extends Packet {
         chartPanel.setMouseWheelEnabled(true);
 
         XYPlot plot = (XYPlot) chart.getPlot();
-        plot.setRenderer(new P27.CustomStrokeRenderer());
+        plot.setRenderer(new CustomStrokeRenderer());
 
         StandardChartTheme theme = createModernTheme();
         theme.apply(chart);

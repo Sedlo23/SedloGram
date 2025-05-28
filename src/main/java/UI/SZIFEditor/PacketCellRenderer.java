@@ -28,8 +28,7 @@ class PacketCellRenderer extends DefaultTableCellRenderer {
 
     @Override
     public Component getTableCellRendererComponent(JTable table, Object value,
-                                                   boolean isSelected, boolean hasFocus,
-                                                   int row, int column) {
+                                                   boolean isSelected, boolean hasFocus, int row, int column) {
         Component component = super.getTableCellRendererComponent(
                 table, value, isSelected, hasFocus, row, column);
 
@@ -232,8 +231,6 @@ class PacketCellRenderer extends DefaultTableCellRenderer {
 
     private long cacheLastClearedTime = System.currentTimeMillis();
     private static final long CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
-    // Add these fields to the class
-    private Map<String, Component> rendererCache = new HashMap<>();
 
 
     // Cache key class to include selection state
@@ -627,4 +624,40 @@ class PacketCellRenderer extends DefaultTableCellRenderer {
     private String colorToHex(Color color) {
         return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
     }
+
+
+    // Add to PacketCellRenderer.java
+// Limit cache size
+    private static final int MAX_CACHE_SIZE = 1000;
+    private final Map<String, Component> rendererCache =
+            new LinkedHashMap<String, Component>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Component> eldest) {
+                    return size() > MAX_CACHE_SIZE;
+                }
+            };
+
+    // Pre-compute common colors and HTML fragments
+    private final String DARK_BG = colorToHex(new Color(60, 60, 60));
+    private final String LIGHT_BG = colorToHex(new Color(224, 224, 224));
+    private final String DARK_TEXT = colorToHex(new Color(220, 220, 220));
+    private final String BLACK_TEXT = colorToHex(Color.BLACK);
+
+    // Optimize HTML generation with StringBuilder pool
+    private final int STRING_BUILDER_POOL_SIZE = 4;
+    private final StringBuilder[] stringBuilderPool = new StringBuilder[STRING_BUILDER_POOL_SIZE];
+    private int currentStringBuilderIndex = 0;
+
+    private StringBuilder getStringBuilder() {
+        if (stringBuilderPool[currentStringBuilderIndex] == null) {
+            stringBuilderPool[currentStringBuilderIndex] = new StringBuilder(512);
+        } else {
+            stringBuilderPool[currentStringBuilderIndex].setLength(0);
+        }
+        StringBuilder result = stringBuilderPool[currentStringBuilderIndex];
+        currentStringBuilderIndex = (currentStringBuilderIndex + 1) % STRING_BUILDER_POOL_SIZE;
+        return result;
+    }
+
+
 }

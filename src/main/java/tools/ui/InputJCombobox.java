@@ -270,8 +270,19 @@ public class InputJCombobox extends PlainDocument {
                         // Try to match any of our country codes within the text
                         for (Map.Entry<String, ImageIcon> entry : countryFlags.entrySet()) {
                             String countryCode = entry.getKey();
-                            // Check if the text contains this country code
-                            if (text.contains(countryCode)) {
+
+                            boolean b = false;
+
+                            for (String s:text.split(" "))
+                            {
+                                if (s.compareTo(countryCode) == 0) {b = true;}
+                            }
+
+                            if (text.compareTo(countryCode) == 0) {b = true;}
+
+
+
+                            if (b) {
                                 ImageIcon icon = entry.getValue();
                                 if (icon != null) {
                                     flagLabel.setPreferredSize(new Dimension(icon.getIconWidth(), icon.getIconHeight()));
@@ -345,7 +356,14 @@ public class InputJCombobox extends PlainDocument {
                     // Check for any country code in the text
                     for (Map.Entry<String, ImageIcon> entry : countryFlags.entrySet()) {
                         String countryCode = entry.getKey();
-                        if (text.contains(countryCode)) {
+                        Boolean b = false;
+
+                        for (String s:text.split(" "))
+                        {
+                            if (s.compareTo(countryCode) == 0) {b = true;}
+                        }
+                        if (text.compareTo(countryCode) == 0) {b = true;}
+                        if (b) {
                             ImageIcon icon = entry.getValue();
                             if (icon != null) {
                                 label.setIcon(icon);
@@ -528,7 +546,7 @@ public class InputJCombobox extends PlainDocument {
 
             countryFlags.put("Nominální", loadAndScaleIcon.apply("flags/right-arrow.png"));
             countryFlags.put("Reverzní", loadAndScaleIcon.apply("flags/back-arrow.png"));
-            countryFlags.put("Oba směry", loadAndScaleIcon.apply("flags/stretch.png"));
+            countryFlags.put("Oba", loadAndScaleIcon.apply("flags/stretch.png"));
 
             countryFlags.put("Ano", loadAndScaleIcon.apply("flags/check.png"));
             countryFlags.put("Je", loadAndScaleIcon.apply("flags/check.png"));
