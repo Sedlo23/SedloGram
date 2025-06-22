@@ -10,6 +10,8 @@ import tools.string.HTMLTagGenerator;
 import javax.swing.*;
 import java.awt.*;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P255 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P255.class);
@@ -23,9 +25,8 @@ public class P255 extends Packet {
     public P255(String[] d) {
         
         this.nid_packet = (NID_PACKET) new NID_PACKET().initValueSet(d);
-        
-        setIcon(GUIHelper.getImageIconFromResources("icons8-alert-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     public Component getPacketComponent() {

@@ -14,6 +14,8 @@ import tools.string.HTMLTagGenerator;
 import javax.swing.*;
 import java.awt.*;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P132 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P132.class);
@@ -44,10 +46,9 @@ public class P132 extends Packet {
         
 
         this.q_srstop = (Q_ASPECT) new Q_ASPECT().initValueSet(d);
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-high-priority-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     public Component getPacketComponent() {

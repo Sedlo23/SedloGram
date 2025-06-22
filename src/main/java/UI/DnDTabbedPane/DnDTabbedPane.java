@@ -1,30 +1,10 @@
 package UI.DnDTabbedPane;
 
 /**
- * Modified DnDTabbedPane.java
- * <p>
- * Originally from:
- * <ul>
- *   <li>http://java-swing-tips.blogspot.com/2008/04/drag-and-drop-tabs-in-jtabbedpane.html</li>
- *   <li>Written by Terai Atsuhiro.</li>
- * </ul>
- * Modified by eed3si9n to allow tabs to be transferred from one pane to another.
- *
- * <p>
- * {@code DnDTabbedPane} is a custom {@link JTabbedPane} supporting drag-and-drop
- * for reordering tabs within a single pane or transferring tabs between different
- * {@code DnDTabbedPane} instances.
- *
- * <p>
- * Usage typically involves:
- * <pre>{@code
- * DnDTabbedPane tabbedPane1 = new DnDTabbedPane();
- * DnDTabbedPane tabbedPane2 = new DnDTabbedPane();
- * // ...
- * // Add tabs and content to these panes
- * // The user can now drag tabs between pane1 and pane2, if desired.
- * }</pre>
+ * Modified DnDTabbedPane.java with packet-aware drag and drop logic
  */
+import packets.Interfaces.IPacket;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.datatransfer.*;
@@ -39,62 +19,29 @@ public class DnDTabbedPane extends JTabbedPane {
     //                             CONSTANTS & FIELDS
     ////////////////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Width of the highlight rectangle that indicates the drop location.
-     */
     private static final int LINE_WIDTH = 3;
-
-    /**
-     * Internal, local name used to identify the data flavor for transferring tabs.
-     */
     private static final String NAME = "TabTransferData";
-
-    /**
-     * The {@link DataFlavor} used to transfer tab data locally.
-     */
-    private final DataFlavor localObjectFlavor =
-            new DataFlavor(DataFlavor.javaJVMLocalObjectMimeType, NAME);
-
-    /**
-     * A shared glass pane instance used for rendering a "ghost" image when dragging tabs.
-     * The same {@code GhostGlassPane} can be reused for all {@code DnDTabbedPane} instances.
-     */
+    private final DataFlavor localObjectFlavor = new DataFlavor(DataFlavor.javaJVMLocalObjectMimeType, NAME);
     private static final GhostGlassPane sGlassPane = new GhostGlassPane();
 
-    /**
-     * Whether or not to paint the ghost image while dragging tabs.
-     */
     private boolean hasGhost = true;
-
-    /**
-     * Whether or not we need to draw the drop location rectangle.
-     */
     private boolean isDrawRect = false;
-
-    /**
-     * The rectangle that indicates where the tab would be dropped.
-     */
     private final Rectangle2D lineRect = new Rectangle2D.Double();
-
-    /**
-     * The color of the drop location rectangle.
-     */
-    private final Color lineColor = new Color(0, 100, 255);
-
-    /**
-     * A functional interface for controlling or validating dropping between different tabbed panes.
-     */
+    private Color lineColor;
     private TabAcceptor acceptor = null;
+    private PacketTypeChecker packetTypeChecker = null;
 
     ////////////////////////////////////////////////////////////////////////////////////
     //                             CONSTRUCTOR
     ////////////////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Creates a new {@code DnDTabbedPane}, enabling drag-and-drop capabilities for its tabs.
-     */
     public DnDTabbedPane() {
         super();
+
+        // Use system colors
+        lineColor = UIManager.getColor("Component.accentColor");
+        if (lineColor == null) lineColor = UIManager.getColor("List.selectionBackground");
+        if (lineColor == null) lineColor = new Color(0, 100, 255);
 
         // Create drag source listener
         DragSourceListener dsl = new DragSourceListener() {
@@ -105,9 +52,8 @@ public class DnDTabbedPane extends JTabbedPane {
 
             @Override
             public void dragOver(DragSourceDragEvent e) {
-                // If the data is recognized, show "move drop" cursor; otherwise "move no drop."
                 TabTransferData data = getTabTransferData(e);
-                if (data == null) {
+                if (data == null || !isPacketMovable(data.getTabbedPane(), data.getTabIndex())) {
                     e.getDragSourceContext().setCursor(DragSource.DefaultMoveNoDrop);
                 } else {
                     e.getDragSourceContext().setCursor(DragSource.DefaultMoveDrop);
@@ -115,9 +61,7 @@ public class DnDTabbedPane extends JTabbedPane {
             }
 
             @Override
-            public void dropActionChanged(DragSourceDragEvent e) {
-                // Not used
-            }
+            public void dropActionChanged(DragSourceDragEvent e) {}
 
             @Override
             public void dragExit(DragSourceEvent e) {
@@ -147,6 +91,11 @@ public class DnDTabbedPane extends JTabbedPane {
                 return; // no valid tab under the mouse
             }
 
+            // Check if this packet type can be moved
+            if (!isPacketMovable(DnDTabbedPane.this, dragTabIndex)) {
+                return; // Don't start drag for fixed packets
+            }
+
             initGlassPane(e.getComponent(), dragOrigin, dragTabIndex);
             try {
                 e.startDrag(
@@ -167,97 +116,107 @@ public class DnDTabbedPane extends JTabbedPane {
                 this, DnDConstants.ACTION_COPY_OR_MOVE, dgl
         );
 
-        // Default acceptor always allows the drop
+        // Default acceptor
         acceptor = (aComponent, aIndex) -> true;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    //                        PACKET TYPE CHECKING INTERFACE
+    ////////////////////////////////////////////////////////////////////////////////////
+
+    public interface PacketTypeChecker {
+        boolean isPH(JTabbedPane tabbedPane, int index);
+        boolean isP0orP200(JTabbedPane tabbedPane, int index);
+        boolean isP255(JTabbedPane tabbedPane, int index);
+        boolean isAddPacketTab(JTabbedPane tabbedPane, int index);
+    }
+
+    public void setPacketTypeChecker(PacketTypeChecker checker) {
+        this.packetTypeChecker = checker;
+    }
+
+    private boolean isPacketMovable(JTabbedPane tabbedPane, int index) {
+        if (packetTypeChecker == null || index < 0 || index >= tabbedPane.getTabCount()) {
+            return true;
+        }
+
+        // Fixed packets cannot be moved
+        return !packetTypeChecker.isPH(tabbedPane, index) &&
+                !packetTypeChecker.isP0orP200(tabbedPane, index) &&
+                !packetTypeChecker.isP255(tabbedPane, index) &&
+                !packetTypeChecker.isAddPacketTab(tabbedPane, index);
+    }
+
+    private int[] getValidDropRange(JTabbedPane tabbedPane) {
+        if (packetTypeChecker == null) {
+            return new int[]{0, tabbedPane.getTabCount()};
+        }
+
+        int minIndex = 0;
+        int maxIndex = tabbedPane.getTabCount();
+
+        // Find minimum index (after PH and P0/P200)
+        for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+            if (packetTypeChecker.isPH(tabbedPane, i) || packetTypeChecker.isP0orP200(tabbedPane, i)) {
+                minIndex = i + 1;
+            } else {
+                break;
+            }
+        }
+
+        // Find maximum index (before P255 and add packet tab)
+        // **FIX: Ensure add packet tab stays at the bottom**
+        for (int i = tabbedPane.getTabCount() - 1; i >= 0; i--) {
+            if (packetTypeChecker.isP255(tabbedPane, i) || packetTypeChecker.isAddPacketTab(tabbedPane, i)) {
+                maxIndex = i;
+            } else {
+                break;
+            }
+        }
+
+        return new int[]{minIndex, maxIndex};
+    }
+
+    private boolean isValidDropIndex(JTabbedPane tabbedPane, int targetIndex) {
+        if (packetTypeChecker == null) return true;
+        int[] validRange = getValidDropRange(tabbedPane);
+        return targetIndex >= validRange[0] && targetIndex <= validRange[1];
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //                             PROPERTIES & ACCESSORS
     ////////////////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Returns the current {@link TabAcceptor}, which decides whether drops are acceptable
-     * between different {@code DnDTabbedPane} instances.
-     *
-     * @return the current {@code TabAcceptor}
-     */
-    public TabAcceptor getAcceptor() {
-        return acceptor;
-    }
-
-    /**
-     * Sets a new {@link TabAcceptor} to control or validate cross-pane tab drops.
-     *
-     * @param value the new {@code TabAcceptor}
-     */
-    public void setAcceptor(TabAcceptor value) {
-        acceptor = value;
-    }
-
-    /**
-     * Enable or disable the ghosted image effect while dragging tabs.
-     *
-     * @param flag {@code true} to enable ghost image rendering, {@code false} otherwise
-     */
-    public void setPaintGhost(boolean flag) {
-        hasGhost = flag;
-    }
-
-    /**
-     * Returns whether or not the ghost image is rendered while dragging.
-     *
-     * @return {@code true} if ghost image is rendered; {@code false} otherwise
-     */
-    public boolean hasGhost() {
-        return hasGhost;
-    }
+    public TabAcceptor getAcceptor() { return acceptor; }
+    public void setAcceptor(TabAcceptor value) { acceptor = value; }
+    public void setPaintGhost(boolean flag) { hasGhost = flag; }
+    public boolean hasGhost() { return hasGhost; }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //                          DATA RETRIEVAL METHODS
     ////////////////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Retrieves the {@link TabTransferData} from a {@link DropTargetDropEvent}.
-     *
-     * @param event the {@code DropTargetDropEvent}
-     * @return the {@code TabTransferData}, or {@code null} if unavailable
-     */
     private TabTransferData getTabTransferData(DropTargetDropEvent event) {
         try {
-            return (TabTransferData)
-                    event.getTransferable().getTransferData(localObjectFlavor);
+            return (TabTransferData) event.getTransferable().getTransferData(localObjectFlavor);
         } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
     }
 
-    /**
-     * Retrieves the {@link TabTransferData} from a {@link DropTargetDragEvent}.
-     *
-     * @param event the {@code DropTargetDragEvent}
-     * @return the {@code TabTransferData}, or {@code null} if unavailable
-     */
     private TabTransferData getTabTransferData(DropTargetDragEvent event) {
         try {
-            return (TabTransferData)
-                    event.getTransferable().getTransferData(localObjectFlavor);
+            return (TabTransferData) event.getTransferable().getTransferData(localObjectFlavor);
         } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
     }
 
-    /**
-     * Retrieves the {@link TabTransferData} from a {@link DragSourceDragEvent}.
-     *
-     * @param event the {@code DragSourceDragEvent}
-     * @return the {@code TabTransferData}, or {@code null} if unavailable
-     */
     private TabTransferData getTabTransferData(DragSourceDragEvent event) {
         try {
-            return (TabTransferData)
-                    event.getDragSourceContext().getTransferable().getTransferData(localObjectFlavor);
+            return (TabTransferData) event.getDragSourceContext().getTransferable().getTransferData(localObjectFlavor);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -268,31 +227,18 @@ public class DnDTabbedPane extends JTabbedPane {
     //                              TRANSFERABLE CLASSES
     ////////////////////////////////////////////////////////////////////////////////////
 
-    /**
-     * A {@link Transferable} that carries the {@link TabTransferData} for the dragged tab.
-     */
     class TabTransferable implements Transferable {
         private final TabTransferData data;
 
-        /**
-         * Creates a {@code TabTransferable} carrying data about the tab being dragged.
-         *
-         * @param tabbedPane the originating {@code DnDTabbedPane}
-         * @param tabIndex   the index of the tab being dragged
-         */
         public TabTransferable(DnDTabbedPane tabbedPane, int tabIndex) {
             data = new TabTransferData(tabbedPane, tabIndex);
         }
 
         @Override
-        public Object getTransferData(DataFlavor flavor) {
-            return data;
-        }
+        public Object getTransferData(DataFlavor flavor) { return data; }
 
         @Override
-        public DataFlavor[] getTransferDataFlavors() {
-            return new DataFlavor[]{localObjectFlavor};
-        }
+        public DataFlavor[] getTransferDataFlavors() { return new DataFlavor[]{localObjectFlavor}; }
 
         @Override
         public boolean isDataFlavorSupported(DataFlavor flavor) {
@@ -300,55 +246,27 @@ public class DnDTabbedPane extends JTabbedPane {
         }
     }
 
-    /**
-     * A simple data holder that records which {@link DnDTabbedPane} and which tab index
-     * is involved in a drag operation.
-     */
     static class TabTransferData {
         private DnDTabbedPane tabbedPane;
         private int tabIndex = -1;
 
-        /** Default constructor. */
-        public TabTransferData() {
-            // For serialization or similar usage
-        }
+        public TabTransferData() {}
 
-        /**
-         * Constructs a data object describing the origin of a dragged tab.
-         *
-         * @param aTabbedPane the {@code DnDTabbedPane} containing the dragged tab
-         * @param aTabIndex   the index of the dragged tab
-         */
         public TabTransferData(DnDTabbedPane aTabbedPane, int aTabIndex) {
             this.tabbedPane = aTabbedPane;
             this.tabIndex = aTabIndex;
         }
 
-        public DnDTabbedPane getTabbedPane() {
-            return tabbedPane;
-        }
-
-        public void setTabbedPane(DnDTabbedPane pane) {
-            tabbedPane = pane;
-        }
-
-        public int getTabIndex() {
-            return tabIndex;
-        }
-
-        public void setTabIndex(int index) {
-            tabIndex = index;
-        }
+        public DnDTabbedPane getTabbedPane() { return tabbedPane; }
+        public void setTabbedPane(DnDTabbedPane pane) { tabbedPane = pane; }
+        public int getTabIndex() { return tabIndex; }
+        public void setTabIndex(int index) { tabIndex = index; }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
     //                             DROP TARGET LISTENER
     ////////////////////////////////////////////////////////////////////////////////////
 
-    /**
-     * A custom drop target listener that handles the visual feedback (drop location rectangle)
-     * and executes the actual reordering or tab transfer on a successful drop.
-     */
     class CDropTargetListener implements DropTargetListener {
         @Override
         public void dragEnter(DropTargetDragEvent e) {
@@ -370,7 +288,6 @@ public class DnDTabbedPane extends JTabbedPane {
             }
             repaint();
 
-            // If ghosting is enabled, move the ghost image
             if (hasGhost()) {
                 sGlassPane.setPoint(buildGhostLocation(e.getLocation()));
                 sGlassPane.repaint();
@@ -378,14 +295,10 @@ public class DnDTabbedPane extends JTabbedPane {
         }
 
         @Override
-        public void dropActionChanged(DropTargetDragEvent e) {
-            // Not used
-        }
+        public void dropActionChanged(DropTargetDragEvent e) {}
 
         @Override
-        public void dragExit(DropTargetEvent e) {
-            isDrawRect = false;
-        }
+        public void dragExit(DropTargetEvent e) { isDrawRect = false; }
 
         @Override
         public void drop(DropTargetDropEvent e) {
@@ -399,34 +312,21 @@ public class DnDTabbedPane extends JTabbedPane {
             repaint();
         }
 
-        /**
-         * Checks if the current drag operation is acceptable.
-         *
-         * @param e the {@link DropTargetDragEvent}
-         * @return {@code true} if the data flavor is supported and the source tab index is valid
-         */
         public boolean isDragAcceptable(DropTargetDragEvent e) {
             Transferable t = e.getTransferable();
-            if (t == null) {
-                return false;
-            }
+            if (t == null) return false;
 
             DataFlavor[] flavors = e.getCurrentDataFlavors();
-            if (!t.isDataFlavorSupported(flavors[0])) {
-                return false;
-            }
+            if (!t.isDataFlavorSupported(flavors[0])) return false;
 
             TabTransferData data = getTabTransferData(e);
-            if (data == null) {
-                return false;
-            }
+            if (data == null) return false;
 
-            // If same tabbed pane, must have a valid tab index
-            if (DnDTabbedPane.this == data.getTabbedPane() && data.getTabIndex() >= 0) {
-                return true;
-            }
+            // Check if the source packet can be moved
+            if (!isPacketMovable(data.getTabbedPane(), data.getTabIndex())) return false;
 
-            // For different tabbed panes, defer to the acceptor
+            if (DnDTabbedPane.this == data.getTabbedPane() && data.getTabIndex() >= 0) return true;
+
             if (DnDTabbedPane.this != data.getTabbedPane() && acceptor != null) {
                 return acceptor.isDropAcceptable(data.getTabbedPane(), data.getTabIndex());
             }
@@ -434,13 +334,9 @@ public class DnDTabbedPane extends JTabbedPane {
         }
 
         private int getTargetTabIndex(Point a_point) {
-            boolean isTopOrBottom = getTabPlacement() == JTabbedPane.TOP
-                    || getTabPlacement() == JTabbedPane.BOTTOM;
+            boolean isTopOrBottom = getTabPlacement() == JTabbedPane.TOP || getTabPlacement() == JTabbedPane.BOTTOM;
 
-            // if the pane is empty, the target index is always zero.
-            if (getTabCount() == 0) {
-                return 0;
-            }
+            if (getTabCount() == 0) return 0;
 
             for (int i = 0; i < getTabCount(); i++) {
                 Rectangle r = getBoundsAt(i);
@@ -450,11 +346,11 @@ public class DnDTabbedPane extends JTabbedPane {
                     r.setRect(r.x, r.y - r.height / 2, r.width, r.height);
                 }
                 if (r.contains(a_point)) {
-                    return i;
+                    if (isValidDropIndex(DnDTabbedPane.this, i)) return i;
                 }
             }
 
-            // check the area after the last tab
+            // Check area after the last tab
             Rectangle r = getBoundsAt(getTabCount() - 1);
             if (isTopOrBottom) {
                 int x = r.x + r.width / 2;
@@ -464,35 +360,30 @@ public class DnDTabbedPane extends JTabbedPane {
                 r.setRect(r.x, y, r.width, getHeight() - y);
             }
 
-            return r.contains(a_point) ? getTabCount() : -1;
+            if (r.contains(a_point)) {
+                int targetIndex = getTabCount();
+                if (isValidDropIndex(DnDTabbedPane.this, targetIndex)) return targetIndex;
+            }
+
+            return -1; // Invalid drop location
         }
 
-
-        /**
-         * Checks if the drop operation is acceptable at the moment of dropping.
-         *
-         * @param e the {@link DropTargetDropEvent}
-         * @return {@code true} if the data flavor is supported and the source tab index is valid
-         */
         public boolean isDropAcceptable(DropTargetDropEvent e) {
             Transferable t = e.getTransferable();
-            if (t == null) {
-                return false;
-            }
+            if (t == null) return false;
 
             DataFlavor[] flavors = e.getCurrentDataFlavors();
-            if (!t.isDataFlavorSupported(flavors[0])) {
-                return false;
-            }
+            if (!t.isDataFlavorSupported(flavors[0])) return false;
 
             TabTransferData data = getTabTransferData(e);
-            if (data == null) {
-                return false;
-            }
+            if (data == null) return false;
 
-            if (DnDTabbedPane.this == data.getTabbedPane() && data.getTabIndex() >= 0) {
-                return true;
-            }
+            if (!isPacketMovable(data.getTabbedPane(), data.getTabIndex())) return false;
+
+            int targetIndex = getTargetTabIndex(e.getLocation());
+            if (!isValidDropIndex(DnDTabbedPane.this, targetIndex)) return false;
+
+            if (DnDTabbedPane.this == data.getTabbedPane() && data.getTabIndex() >= 0) return true;
 
             if (DnDTabbedPane.this != data.getTabbedPane() && acceptor != null) {
                 return acceptor.isDropAcceptable(data.getTabbedPane(), data.getTabIndex());
@@ -505,24 +396,15 @@ public class DnDTabbedPane extends JTabbedPane {
     //                          TAB REORDERING/TRANSFER
     ////////////////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Converts (transfers) a tab from the source tabbed pane to this tabbed pane,
-     * inserting at the specified target index.
-     *
-     * @param data        the transfer data describing the source pane and tab index
-     * @param targetIndex the index at which the tab should be placed in this pane
-     */
     private void convertTab(TabTransferData data, int targetIndex) {
-        if (data == null) {
-            return;
-        }
+        if (data == null) return;
 
         DnDTabbedPane source = data.getTabbedPane();
         int sourceIndex = data.getTabIndex();
 
-        if (sourceIndex < 0) {
-            return;
-        }
+        if (sourceIndex < 0) return;
+        if (!isPacketMovable(source, sourceIndex)) return;
+        if (!isValidDropIndex(this, targetIndex)) return;
 
         Component tabContent = source.getComponentAt(sourceIndex);
         String tabTitle = source.getTitleAt(sourceIndex);
@@ -531,12 +413,11 @@ public class DnDTabbedPane extends JTabbedPane {
         // If dropping into a different tabbed pane
         if (this != source) {
             source.remove(sourceIndex);
-            if (targetIndex == getTabCount()) {
+            if (targetIndex >= getTabCount()) {
                 addTab(tabTitle, tabContent);
+                targetIndex = getTabCount() - 1;
             } else {
-                if (targetIndex < 0) {
-                    targetIndex = 0;
-                }
+                if (targetIndex < 0) targetIndex = 0;
                 insertTab(tabTitle, null, tabContent, null, targetIndex);
             }
             if (customHeader != null) {
@@ -547,10 +428,17 @@ public class DnDTabbedPane extends JTabbedPane {
         }
 
         // Reordering within the same pane
-        if (targetIndex < 0 || sourceIndex == targetIndex) {
-            return;
-        }
-        if (targetIndex == getTabCount()) {
+        if (targetIndex < 0 || sourceIndex == targetIndex) return;
+
+        // Ensure we don't violate ordering constraints
+        int[] validRange = getValidDropRange(this);
+        targetIndex = Math.max(validRange[0], Math.min(validRange[1], targetIndex));
+
+        // Update the model first
+        updatePacketModel(sourceIndex, targetIndex);
+
+        // Then update the UI
+        if (targetIndex >= getTabCount()) {
             source.remove(sourceIndex);
             addTab(tabTitle, tabContent);
             if (customHeader != null) {
@@ -574,21 +462,38 @@ public class DnDTabbedPane extends JTabbedPane {
         }
     }
 
+    private void updatePacketModel(int fromIndex, int toIndex) {
+        DefaultListModel<IPacket> packetModel = (DefaultListModel<IPacket>) getClientProperty("packetModel");
+        if (packetModel != null && fromIndex >= 0 && fromIndex < packetModel.size()
+                && toIndex >= 0 && toIndex <= packetModel.size()) {
+
+            IPacket movingItem = packetModel.get(fromIndex);
+            packetModel.removeElementAt(fromIndex);
+
+            // Adjust target index if necessary
+            if (toIndex > fromIndex) {
+                toIndex = toIndex - 1;
+            }
+            if (toIndex >= packetModel.size()) {
+                packetModel.addElement(movingItem);
+            } else {
+                packetModel.add(toIndex, movingItem);
+            }
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////
     //                      DROP RECTANGLE INITIALIZATION
     ////////////////////////////////////////////////////////////////////////////////////
 
     private void initTargetLeftRightLine(int nextIndex, TabTransferData data) {
-        if (nextIndex < 0) {
+        if (nextIndex < 0 || !isValidDropIndex(this, nextIndex)) {
             lineRect.setRect(0, 0, 0, 0);
             isDrawRect = false;
             return;
         }
 
-        // If dragging within the same pane and dropping "on the same spot," do nothing
-        if ((data.getTabbedPane() == this)
-                && (data.getTabIndex() == nextIndex
-                || nextIndex - data.getTabIndex() == 1)) {
+        if ((data.getTabbedPane() == this) && (data.getTabIndex() == nextIndex || nextIndex - data.getTabIndex() == 1)) {
             lineRect.setRect(0, 0, 0, 0);
             isDrawRect = false;
         } else if (getTabCount() == 0) {
@@ -598,48 +503,41 @@ public class DnDTabbedPane extends JTabbedPane {
             Rectangle rect = getBoundsAt(0);
             lineRect.setRect(-LINE_WIDTH / 2.0, rect.y, LINE_WIDTH, rect.height);
             isDrawRect = true;
-        } else if (nextIndex == getTabCount()) {
+        } else if (nextIndex >= getTabCount()) {
             Rectangle rect = getBoundsAt(getTabCount() - 1);
-            lineRect.setRect(rect.x + rect.width - LINE_WIDTH / 2.0, rect.y,
-                    LINE_WIDTH, rect.height);
+            lineRect.setRect(rect.x + rect.width - LINE_WIDTH / 2.0, rect.y, LINE_WIDTH, rect.height);
             isDrawRect = true;
         } else {
             Rectangle rect = getBoundsAt(nextIndex - 1);
-            lineRect.setRect(rect.x + rect.width - LINE_WIDTH / 2.0, rect.y,
-                    LINE_WIDTH, rect.height);
+            lineRect.setRect(rect.x + rect.width - LINE_WIDTH / 2.0, rect.y, LINE_WIDTH, rect.height);
             isDrawRect = true;
         }
     }
 
     private void initTargetTopBottomLine(int nextIndex, TabTransferData data) {
-        if (nextIndex < 0) {
+        if (nextIndex < 0 || !isValidDropIndex(this, nextIndex)) {
             lineRect.setRect(0, 0, 0, 0);
             isDrawRect = false;
             return;
         }
 
-        if ((data.getTabbedPane() == this)
-                && (data.getTabIndex() == nextIndex
-                || nextIndex - data.getTabIndex() == 1)) {
+        if ((data.getTabbedPane() == this) && (data.getTabIndex() == nextIndex || nextIndex - data.getTabIndex() == 1)) {
             lineRect.setRect(0, 0, 0, 0);
             isDrawRect = false;
         } else if (getTabCount() == 0) {
             lineRect.setRect(0, 0, 0, 0);
             isDrawRect = false;
-        } else if (nextIndex == getTabCount()) {
+        } else if (nextIndex >= getTabCount()) {
             Rectangle rect = getBoundsAt(getTabCount() - 1);
-            lineRect.setRect(rect.x, rect.y + rect.height - LINE_WIDTH / 2.0,
-                    rect.width, LINE_WIDTH);
+            lineRect.setRect(rect.x, rect.y + rect.height - LINE_WIDTH / 2.0, rect.width, LINE_WIDTH);
             isDrawRect = true;
         } else if (nextIndex == 0) {
             Rectangle rect = getBoundsAt(0);
-            lineRect.setRect(rect.x, -LINE_WIDTH / 2.0,
-                    rect.width, LINE_WIDTH);
+            lineRect.setRect(rect.x, -LINE_WIDTH / 2.0, rect.width, LINE_WIDTH);
             isDrawRect = true;
         } else {
             Rectangle rect = getBoundsAt(nextIndex - 1);
-            lineRect.setRect(rect.x, rect.y + rect.height - LINE_WIDTH / 2.0,
-                    rect.width, LINE_WIDTH);
+            lineRect.setRect(rect.x, rect.y + rect.height - LINE_WIDTH / 2.0, rect.width, LINE_WIDTH);
             isDrawRect = true;
         }
     }
@@ -648,24 +546,14 @@ public class DnDTabbedPane extends JTabbedPane {
     //                       GHOST IMAGE SUPPORT
     ////////////////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Configures the glass pane for rendering the ghost image of the dragged tab.
-     *
-     * @param c           the component being dragged (this {@code JTabbedPane})
-     * @param tabPoint    the initial drag point
-     * @param tabIndex    the index of the tab being dragged
-     */
     private void initGlassPane(Component c, Point tabPoint, int tabIndex) {
         getRootPane().setGlassPane(sGlassPane);
 
         if (hasGhost()) {
             Rectangle rect = getBoundsAt(tabIndex);
-            BufferedImage image = new BufferedImage(
-                    c.getWidth(), c.getHeight(), BufferedImage.TYPE_INT_ARGB
-            );
+            BufferedImage image = new BufferedImage(c.getWidth(), c.getHeight(), BufferedImage.TYPE_INT_ARGB);
             Graphics g = image.getGraphics();
             c.paint(g);
-            // Crop out the bounding rectangle of just the tab
             image = image.getSubimage(rect.x, rect.y, rect.width, rect.height);
             sGlassPane.setImage(image);
         }
@@ -674,12 +562,6 @@ public class DnDTabbedPane extends JTabbedPane {
         sGlassPane.setVisible(true);
     }
 
-    /**
-     * Computes the on-screen location for the ghost image, based on the current orientation.
-     *
-     * @param location the current mouse location in this tabbed pane's coordinate space
-     * @return a location point in the glass pane's coordinate space
-     */
     private Point buildGhostLocation(Point location) {
         Point result = new Point(location);
 
@@ -700,26 +582,9 @@ public class DnDTabbedPane extends JTabbedPane {
                 result.x = getWidth() - 1 - sGlassPane.getGhostWidth();
                 result.y -= sGlassPane.getGhostHeight() / 2;
             }
-            default -> {
-                // No-op
-            }
         }
 
         return SwingUtilities.convertPoint(DnDTabbedPane.this, result, sGlassPane);
-    }
-
-    /**
-     * Returns a bounding rectangle that encloses the entire tab area, used to verify if
-     * a drag is over the tab area or not.
-     *
-     * @return the bounding rectangle for the tab area
-     */
-    private Rectangle getTabAreaBound() {
-        if (getTabCount() == 0) {
-            return new Rectangle();
-        }
-        Rectangle lastTab = getUI().getTabBounds(this, getTabCount() - 1);
-        return new Rectangle(0, 0, getWidth(), lastTab.y + lastTab.height);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -728,15 +593,11 @@ public class DnDTabbedPane extends JTabbedPane {
 
     @Override
     protected void paintComponent(Graphics g) {
-       try
-       {
-           super.paintComponent(g);
-       }
-       catch (Exception e)
-       {
-
-       }
-
+        try {
+            super.paintComponent(g);
+        } catch (Exception e) {
+            // Ignore painting exceptions
+        }
 
         if (isDrawRect) {
             Graphics2D g2 = (Graphics2D) g;
@@ -749,10 +610,6 @@ public class DnDTabbedPane extends JTabbedPane {
     //                               UTILITY INTERFACES
     ////////////////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Functional interface to decide if dropping a tab from {@code aComponent} at index
-     * {@code aIndex} is acceptable into this {@code DnDTabbedPane}.
-     */
     public interface TabAcceptor {
         boolean isDropAcceptable(DnDTabbedPane aComponent, int aIndex);
     }

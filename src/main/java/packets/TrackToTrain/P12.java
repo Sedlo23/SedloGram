@@ -35,6 +35,7 @@ import java.awt.event.ActionListener;
 import java.awt.geom.*;
 
 import static tools.ui.GUIHelper.createModernTheme;
+import static tools.ui.GUIHelper.loadAndScaleIcon;
 
 public class P12 extends Packet {
 
@@ -105,10 +106,9 @@ public class P12 extends Packet {
         
 
         this.q_overlap = (Q_OVERLAP) new Q_OVERLAP().initValueSet(d);
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-stop-train-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
 
         dataset = new XYSeriesCollection();
 

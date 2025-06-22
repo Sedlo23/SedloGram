@@ -1,5 +1,6 @@
 package packets.Var.Q;
 
+import packets.Var.BinaryChangeListener;
 import tools.crypto.ArithmeticalFunctions;
 import tools.string.StringHelper;
 import packets.Var.A.A_NVP12;
@@ -15,9 +16,11 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static tools.ui.GUIHelper.addLabel;
-import static tools.ui.GUIHelper.setTitle;
 
 /**
  * Q_NVKVINTSET represents a "Kv_int set" packet.
@@ -37,11 +40,147 @@ public class Q_NVKVINTSET extends Variables {
     private M_NVKVINT m_nvkvint2;
     private N_ITER n_iter;
 
+    /** List of listeners that will be applied to all subvariables */
+    private final List<BinaryChangeListener> subvariableListeners = new CopyOnWriteArrayList<>();
+
     /**
      * Default constructor that initializes subfields with default conditions.
      */
     public Q_NVKVINTSET() {
         super("Q_NVKVINTSET", 2, "Type of Kv_int set");
+
+        // Add default listener for subvariables
+        addDefaultSubvariableListener();
+
+        initializeSubvariables();
+    }
+
+    /**
+     * Adds a listener that will be automatically applied to all subvariables.
+     *
+     * @param listener the listener to add to all subvariables
+     * @return this Q_NVKVINTSET instance for chaining
+     */
+    public Q_NVKVINTSET addSubvariableListener(BinaryChangeListener listener) {
+        if (listener != null) {
+            subvariableListeners.add(listener);
+            applyListenerToAllSubvariables(listener);
+        }
+        return this;
+    }
+
+    /**
+     * Removes a listener from all subvariables and from the subvariable listeners list.
+     *
+     * @param listener the listener to remove
+     * @return true if the listener was found and removed
+     */
+    public boolean removeSubvariableListener(BinaryChangeListener listener) {
+        boolean removed = subvariableListeners.remove(listener);
+
+        if (removed) {
+            removeListenerFromAllSubvariables(listener);
+        }
+
+        return removed;
+    }
+
+    /**
+     * Clears all subvariable listeners.
+     */
+    public void clearSubvariableListeners() {
+        for (BinaryChangeListener listener : subvariableListeners) {
+            removeListenerFromAllSubvariables(listener);
+        }
+        subvariableListeners.clear();
+    }
+
+    /**
+     * Applies a single listener to all current subvariables.
+     *
+     * @param listener the listener to apply
+     */
+    private void applyListenerToAllSubvariables(BinaryChangeListener listener) {
+        if (a_nvp12 != null) {
+            a_nvp12.addBinaryChangeListener(listener);
+        }
+        if (a_nvp23 != null) {
+            a_nvp23.addBinaryChangeListener(listener);
+        }
+        if (v_nvkvint != null) {
+            v_nvkvint.addBinaryChangeListener(listener);
+        }
+        if (m_nvkvint1 != null) {
+            m_nvkvint1.addBinaryChangeListener(listener);
+        }
+        if (m_nvkvint2 != null) {
+            m_nvkvint2.addBinaryChangeListener(listener);
+        }
+        if (n_iter != null) {
+            n_iter.addBinaryChangeListener(listener);
+            n_iter.addChildListener(listener); // For N_ITER children
+        }
+    }
+
+    /**
+     * Removes a single listener from all current subvariables.
+     *
+     * @param listener the listener to remove
+     */
+    private void removeListenerFromAllSubvariables(BinaryChangeListener listener) {
+        if (a_nvp12 != null) {
+            a_nvp12.removeBinaryChangeListener(listener);
+        }
+        if (a_nvp23 != null) {
+            a_nvp23.removeBinaryChangeListener(listener);
+        }
+        if (v_nvkvint != null) {
+            v_nvkvint.removeBinaryChangeListener(listener);
+        }
+        if (m_nvkvint1 != null) {
+            m_nvkvint1.removeBinaryChangeListener(listener);
+        }
+        if (m_nvkvint2 != null) {
+            m_nvkvint2.removeBinaryChangeListener(listener);
+        }
+        if (n_iter != null) {
+            n_iter.removeBinaryChangeListener(listener);
+            n_iter.removeChildListener(listener);
+        }
+    }
+
+    /**
+     * Applies all registered subvariable listeners to a specific variable.
+     *
+     * @param variable the variable to apply listeners to
+     */
+    private void applyAllListenersToVariable(Variables variable) {
+        for (BinaryChangeListener listener : subvariableListeners) {
+            variable.addBinaryChangeListener(listener);
+
+            // If it's an N_ITER, also add as child listener
+            if (variable instanceof N_ITER) {
+                ((N_ITER) variable).addChildListener(listener);
+            }
+        }
+    }
+
+    /**
+     * Adds a default listener that logs changes in subvariables.
+     */
+    private void addDefaultSubvariableListener() {
+        addSubvariableListener((source, oldValue, newValue) -> {
+            System.out.println(String.format(
+                    "Subvariable '%s' in Q_NVKVINTSET changed from '%s' to '%s'",
+                    source.getName(), oldValue, newValue
+            ));
+        });
+    }
+
+    /**
+     * Initializes all subvariables and applies listeners.
+     */
+    private void initializeSubvariables() {
         a_nvp12 = (A_NVP12) new A_NVP12().setCond(this, 1);
         a_nvp23 = (A_NVP23) new A_NVP23().setCond(this, 1);
         v_nvkvint = new V_NVKVINT();
@@ -51,6 +190,14 @@ public class Q_NVKVINTSET extends Variables {
                 .addNewIterVar(new V_NVKVINT())
                 .addNewIterVar(new M_NVKVINT())
                 .addNewIterVar(new M_NVKVINT().setCond(this, 1));
+
+        // Apply all listeners to the newly created subvariables
+        applyAllListenersToVariable(a_nvp12);
+        applyAllListenersToVariable(a_nvp23);
+        applyAllListenersToVariable(v_nvkvint);
+        applyAllListenersToVariable(m_nvkvint1);
+        applyAllListenersToVariable(m_nvkvint2);
+        applyAllListenersToVariable(n_iter);
     }
 
     /**
@@ -61,6 +208,7 @@ public class Q_NVKVINTSET extends Variables {
      */
     @Override
     public Variables initValueSet(String[] s) {
+        // Recreate subvariables
         a_nvp12 = (A_NVP12) new A_NVP12().setCond(this, 1);
         a_nvp23 = (A_NVP23) new A_NVP23().setCond(this, 1);
         v_nvkvint = new V_NVKVINT();
@@ -70,6 +218,14 @@ public class Q_NVKVINTSET extends Variables {
                 .addNewIterVar(new V_NVKVINT())
                 .addNewIterVar(new M_NVKVINT())
                 .addNewIterVar(new M_NVKVINT().setCond(this, 1));
+
+        // Apply listeners to recreated subvariables
+        applyAllListenersToVariable(a_nvp12);
+        applyAllListenersToVariable(a_nvp23);
+        applyAllListenersToVariable(v_nvkvint);
+        applyAllListenersToVariable(m_nvkvint1);
+        applyAllListenersToVariable(m_nvkvint2);
+        applyAllListenersToVariable(n_iter);
 
         setBinValue(StringHelper.TrimAR(s, getMaxSize()));
 
@@ -171,15 +327,35 @@ public class Q_NVKVINTSET extends Variables {
     @Override
     public Variables deepCopy() {
         Q_NVKVINTSET copy = new Q_NVKVINTSET();
+
+        // Copy listeners first
+        copy.subvariableListeners.addAll(this.subvariableListeners);
+
         copy.setBinValue(getBinValue());
 
-        copy.a_nvp12 = (A_NVP12) new A_NVP12().initValueSet(new String[]{a_nvp12.getBinValue()}).setCond(this, 1);
-        copy.a_nvp23 = (A_NVP23) new A_NVP23().initValueSet(new String[]{a_nvp23.getBinValue()}).setCond(this, 1);
+        // Create new subvariables
+        copy.a_nvp12 = (A_NVP12) new A_NVP12().initValueSet(new String[]{a_nvp12.getBinValue()}).setCond(copy, 1);
+        copy.a_nvp23 = (A_NVP23) new A_NVP23().initValueSet(new String[]{a_nvp23.getBinValue()}).setCond(copy, 1);
         copy.v_nvkvint = (V_NVKVINT) new V_NVKVINT().initValueSet(new String[]{v_nvkvint.getBinValue()});
         copy.m_nvkvint1 = (M_NVKVINT) new M_NVKVINT().initValueSet(new String[]{m_nvkvint1.getBinValue()});
-        copy.m_nvkvint2 = (M_NVKVINT) new M_NVKVINT().initValueSet(new String[]{m_nvkvint2.getBinValue()}).setCond(this, 1);
+        copy.m_nvkvint2 = (M_NVKVINT) new M_NVKVINT().initValueSet(new String[]{m_nvkvint2.getBinValue()}).setCond(copy, 1);
+
+        // For N_ITER, we need to properly copy the template and data
+        copy.n_iter = new N_ITER("Hodnoty pro výpočet křivek")
+                .addNewIterVar(new V_NVKVINT())
+                .addNewIterVar(new M_NVKVINT())
+                .addNewIterVar(new M_NVKVINT().setCond(copy, 1));
         copy.n_iter.setTemplate(n_iter.getTemplate());
         copy.n_iter.initValueSet(new String[]{n_iter.getBinValue()});
+
+        // Apply all listeners to the copied subvariables
+        copy.applyAllListenersToVariable(copy.a_nvp12);
+        copy.applyAllListenersToVariable(copy.a_nvp23);
+        copy.applyAllListenersToVariable(copy.v_nvkvint);
+        copy.applyAllListenersToVariable(copy.m_nvkvint1);
+        copy.applyAllListenersToVariable(copy.m_nvkvint2);
+        copy.applyAllListenersToVariable(copy.n_iter);
+
         return copy;
     }
 
@@ -208,4 +384,37 @@ public class Q_NVKVINTSET extends Variables {
         sb.append(n_iter.getSimpleView());
         return sb.toString();
     }
+
+    /**
+     * Gets all subvariables as a list for convenient iteration.
+     *
+     * @return a list containing all subvariables
+     */
+    public List<Variables> getAllSubvariables() {
+        List<Variables> subvariables = new ArrayList<>();
+        if (a_nvp12 != null) subvariables.add(a_nvp12);
+        if (a_nvp23 != null) subvariables.add(a_nvp23);
+        if (v_nvkvint != null) subvariables.add(v_nvkvint);
+        if (m_nvkvint1 != null) subvariables.add(m_nvkvint1);
+        if (m_nvkvint2 != null) subvariables.add(m_nvkvint2);
+        if (n_iter != null) subvariables.add(n_iter);
+        return subvariables;
+    }
+
+    /**
+     * Gets the number of registered subvariable listeners.
+     *
+     * @return the number of subvariable listeners
+     */
+    public int getSubvariableListenerCount() {
+        return subvariableListeners.size();
+    }
+
+    // Getters for individual subvariables (useful for testing and specific access)
+    public A_NVP12 getA_nvp12() { return a_nvp12; }
+    public A_NVP23 getA_nvp23() { return a_nvp23; }
+    public V_NVKVINT getV_nvkvint() { return v_nvkvint; }
+    public M_NVKVINT getM_nvkvint1() { return m_nvkvint1; }
+    public M_NVKVINT getM_nvkvint2() { return m_nvkvint2; }
+    public N_ITER getN_iter() { return n_iter; }
 }

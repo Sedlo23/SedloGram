@@ -348,26 +348,87 @@ public class GUIHelper {
 
     /**
      * Wraps a given component in a {@link JPanel} with a specified title (as a {@link JLabel})
-     * at the top.
+     * at the top. Uses FlatLaf color scheme for consistent theming across the application.
+     * The panel automatically updates its styling when the Look and Feel changes.
      *
      * @param component the component to wrap.
      * @param title     the textual title to display above the component.
-     * @return a new {@link JPanel} containing the label and the component.
+     * @return a new {@link JPanel} containing the label and the component with FlatLaf styling.
      */
     public static Component setTitle(Component component, String title) {
-        JPanel panel = new JPanel(new BorderLayout());
+        // Create a custom panel that updates with theme changes
+        JPanel panel = new JPanel(new BorderLayout()) {
+            @Override
+            public void updateUI() {
+                super.updateUI();
+                // Reapply FlatLaf styling when theme changes
+                SwingUtilities.invokeLater(() -> applyFlatLafPanelStyling(this));
+            }
+        };
 
-        JLabel label = new JLabel(title.split(":")[0] + " ", SwingConstants.CENTER);
-        label.setOpaque(true);
+        // Create a custom label that updates with theme changes
+        JLabel label = new JLabel(title.split(":")[0] + " ", SwingConstants.CENTER) {
+            @Override
+            public void updateUI() {
+                super.updateUI();
+                // Reapply FlatLaf styling when theme changes
+                SwingUtilities.invokeLater(() -> applyFlatLafTitleLabelStyling(this));
+            }
+        };
+
+        // Apply initial styling
+        applyFlatLafPanelStyling(panel);
+        applyFlatLafTitleLabelStyling(label);
+
+        // Consistent dimensions with other components
         label.setHorizontalTextPosition(SwingConstants.CENTER);
         label.setPreferredSize(new Dimension(140, 25));
         label.setMinimumSize(new Dimension(140, 25));
         label.setMaximumSize(new Dimension(140, 25));
 
+        // Add components with proper spacing
         panel.add(label, BorderLayout.NORTH);
-        panel.add(component, BorderLayout.CENTER);
+
+        // Add some spacing between title and component
+        JPanel spacingPanel = new JPanel(new BorderLayout());
+        spacingPanel.setOpaque(false);
+        spacingPanel.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
+        spacingPanel.add(component, BorderLayout.CENTER);
+
+        panel.add(spacingPanel, BorderLayout.CENTER);
 
         return panel;
+    }
+
+    /**
+     * Apply FlatLaf styling to a title label with more prominent styling than regular labels
+     */
+    private static void applyFlatLafTitleLabelStyling(JLabel label) {
+        // Use FlatLaf colors for the title label
+        Color labelFg = UIManager.getColor("Label.foreground");
+        Color labelBg = UIManager.getColor("TitlePane.background");
+        Color borderColor = UIManager.getColor("Component.borderColor");
+        Font labelFont = UIManager.getFont("Label.font");
+
+        // Fallbacks if colors/font are null
+        if (labelFg == null) labelFg = UIManager.getColor("textText");
+        if (labelBg == null) labelBg = UIManager.getColor("Panel.background");
+        if (borderColor == null) borderColor = UIManager.getColor("TextField.borderColor");
+        if (labelFont == null) labelFont = new Font(Font.SANS_SERIF, Font.BOLD, 12);
+
+        // Make title labels slightly more prominent
+        label.setForeground(labelFg);
+        label.setBackground(labelBg);
+        label.setOpaque(true);
+
+        // Use FlatLaf font with title styling (slightly larger and bold)
+        label.setFont(labelFont.deriveFont(Font.BOLD, Math.max(13f, labelFont.getSize() + 1f)));
+
+        // Add subtle border and padding for title emphasis
+        label.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, borderColor),
+                BorderFactory.createEmptyBorder(4, 8, 4, 8)
+        ));
     }
 
     /**
@@ -398,6 +459,7 @@ public class GUIHelper {
 
     /**
      * Wraps a given component in a {@link JPanel} along with a label and (optionally) a status label.
+     * Uses FlatLaf color scheme for consistent theming across the application.
      * Currently, the statusLabel parameter is not directly used; you could extend this method
      * to incorporate more dynamic status messages if desired.
      *
@@ -405,20 +467,73 @@ public class GUIHelper {
      * @param title        text to display above the component.
      * @param description  additional description (unused in the current logic).
      * @param statusLabel  optional status label to show messages (unused in the current logic).
-     * @return a {@link JPanel} that contains the label and the component.
+     * @return a {@link JPanel} that contains the label and the component with FlatLaf styling.
      */
     public static Component addLabel(Component component, String title, String description, JLabel statusLabel) {
         JPanel panel = new JPanel(new BorderLayout());
-        JLabel label = new JLabel(title.split(":")[0] + " ", SwingConstants.CENTER);
-        label.setHorizontalTextPosition(SwingConstants.CENTER);
 
+        // Apply FlatLaf styling to the panel
+        applyFlatLafPanelStyling(panel);
+
+        // Create and style the label with FlatLaf colors
+        JLabel label = new JLabel(title.split(":")[0] + " ", SwingConstants.CENTER);
+        applyFlatLafLabelStyling(label);
+
+        label.setHorizontalTextPosition(SwingConstants.CENTER);
         label.setPreferredSize(new Dimension(140, 25));
         label.setMinimumSize(new Dimension(140, 25));
         label.setMaximumSize(new Dimension(140, 25));
 
+        // Add components with FlatLaf-style spacing
         panel.add(label, BorderLayout.NORTH);
-        panel.add(component, BorderLayout.SOUTH);
+        panel.add(component, BorderLayout.CENTER);
+
         return panel;
+    }
+
+    /**
+     * Apply FlatLaf styling to a panel container
+     */
+    private static void applyFlatLafPanelStyling(JPanel panel) {
+        // Use FlatLaf colors for the panel
+        Color panelBg = UIManager.getColor("Panel.background");
+        Color borderColor = UIManager.getColor("Component.borderColor");
+
+        // Fallbacks if colors are null
+        if (panelBg == null) panelBg = UIManager.getColor("control");
+        if (borderColor == null) borderColor = UIManager.getColor("TextField.borderColor");
+
+        panel.setBackground(panelBg);
+        panel.setOpaque(true);
+
+        // Add modern border with FlatLaf colors
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(borderColor, 1),
+                BorderFactory.createEmptyBorder(8, 8, 8, 8)
+        ));
+    }
+
+    /**
+     * Apply FlatLaf styling to a label
+     */
+    private static void applyFlatLafLabelStyling(JLabel label) {
+        // Use FlatLaf colors for the label
+        Color labelFg = UIManager.getColor("Label.foreground");
+        Color labelBg = UIManager.getColor("Label.background");
+        Font labelFont = UIManager.getFont("Label.font");
+
+        // Fallbacks if colors/font are null
+        if (labelFg == null) labelFg = UIManager.getColor("textText");
+        if (labelBg == null) labelBg = UIManager.getColor("Panel.background");
+        if (labelFont == null) labelFont = new Font(Font.SANS_SERIF, Font.BOLD, 12);
+
+        label.setForeground(labelFg);
+        label.setBackground(labelBg);
+        label.setFont(labelFont.deriveFont(Font.BOLD, labelFont.getSize() + 1f));
+        label.setOpaque(false);
+
+        // Add subtle padding to the label
+        label.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////
@@ -736,6 +851,131 @@ public class GUIHelper {
                 + backgroundColor.getGreen() * 587
                 + backgroundColor.getBlue() * 114) / 1000.0;
         return (brightness > 128) ? Color.BLACK : Color.WHITE;
+    }
+
+
+    public static ImageIcon loadAndScaleIcon(String path)
+    {
+        ImageIcon originalIcon = new ImageIcon(GUIHelper.class.getClassLoader().getResource(path));
+        Image originalImage = originalIcon.getImage();
+
+        // Calculate width to maintain aspect ratio
+        int originalWidth = originalIcon.getIconWidth();
+        int originalHeight = originalIcon.getIconHeight();
+
+        // Avoid division by zero
+        if (originalHeight <= 0) return originalIcon;
+
+        // Calculate new width to maintain aspect ratio
+        int newWidth = (int) ((double) originalWidth / originalHeight * (24));
+
+        // Scale the image
+        Image scaledImage = originalImage.getScaledInstance(newWidth, 24, Image.SCALE_SMOOTH);
+
+        BufferedImage bufferedImage;
+
+        if (scaledImage instanceof BufferedImage) {
+            bufferedImage = (BufferedImage) scaledImage;
+        } else {
+            // Create a buffered image with transparency
+            bufferedImage = new BufferedImage(
+                    originalWidth,
+                    originalHeight,
+                    BufferedImage.TYPE_INT_ARGB);
+
+            // Draw the image on to the buffered image
+            Graphics2D g2d = bufferedImage.createGraphics();
+            g2d.drawImage(originalImage, 0, 0, null);
+            g2d.dispose();
+        }
+
+        // Create a new transparent image
+        BufferedImage transparentImage = new BufferedImage(
+                bufferedImage.getWidth(),
+                bufferedImage.getHeight(),
+                BufferedImage.TYPE_INT_ARGB);
+
+        // Loop through each pixel
+        // Get the background color of the JLabel
+        Color backgroundColor = new JLabel().getBackground();
+
+// Determine if the background is dark
+        boolean isDarkBackground = isDarkColor(backgroundColor);
+
+        boolean isCountry =
+                path.contains("flags/pt.png") ||
+                        path.contains("flags/lu.png") ||
+                        path.contains("flags/de.png") ||
+                        path.contains("flags/fr.png") ||
+                        path.contains("flags/be.png") ||
+                        path.contains("flags/it.png") ||
+                        path.contains("flags/fi.png") ||
+                        path.contains("flags/pl.png") ||
+                        path.contains("flags/dk.png") ||
+                        path.contains("flags/es.png") ||
+                        path.contains("flags/at.png") ||
+                        path.contains("flags/ie.png") ||
+                        path.contains("flags/cz.png") ||
+                        path.contains("flags/england.png");
+
+
+
+        for (int x = 0; x < bufferedImage.getWidth(); x++)
+        {
+            for (int y = 0; y < bufferedImage.getHeight(); y++) {
+                int rgb = bufferedImage.getRGB(x, y);
+                Color color = new Color(rgb, true);
+
+
+
+                {
+                    // For light backgrounds, make white pixels transparent
+                    if (color.getRed() == 255 && color.getGreen() == 255 && color.getBlue() == 255 && !isCountry) {
+                        // Make it transparent
+                        transparentImage.setRGB(x, y, new Color(255, 255, 255, 0).getRGB());
+                    } else {
+                        // Keep the original color
+                        transparentImage.setRGB(x, y, rgb);
+                    }
+
+
+
+                    if (isDarkBackground && !isCountry) {
+
+                        rgb = transparentImage.getRGB(x, y);
+                        color = new Color(rgb, true);
+
+                        // For dark backgrounds, make black pixels white
+
+                        if (color.getRed() <= 1 && color.getGreen() <= 1 && color.getBlue() <= 1 && color.getAlpha() != 0)
+                        {
+                            // Make it white
+                            transparentImage.setRGB(x, y, Color.WHITE.getRGB());
+                        } else {
+                            // Keep the original color
+                            transparentImage.setRGB(x, y, rgb);
+                        }
+                    }
+
+
+                }
+            }
+        }
+
+        scaledImage = transparentImage.getScaledInstance(newWidth, 24, Image.SCALE_SMOOTH);
+
+
+        return new ImageIcon(scaledImage);
+    };
+
+    private static boolean isDarkColor(Color color) {
+        // Calculate perceived brightness using common formula
+        double brightness = (0.299 * color.getRed() +
+                0.587 * color.getGreen() +
+                0.114 * color.getBlue()) / 255;
+
+        // If brightness is less than 0.5, consider it dark
+        return brightness < 0.5;
     }
 
 }

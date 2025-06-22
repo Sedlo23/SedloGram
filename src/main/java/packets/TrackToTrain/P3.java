@@ -45,6 +45,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 import static tools.crypto.ArithmeticalFunctions.bin2Hex;
+import static tools.ui.GUIHelper.loadAndScaleIcon;
 
 /**
  * P3 packet represents a complex packet containing multiple variable fields.
@@ -215,10 +216,9 @@ public class P3 extends Packet {
         
 
         q_nvkint         = (Q_NVKINT) new Q_NVKINT().initValueSet(d);
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-registry-editor-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     @Override

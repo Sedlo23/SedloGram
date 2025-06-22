@@ -21,6 +21,7 @@ import tools.crypto.CalculatorMD4;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
+import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
@@ -29,6 +30,8 @@ import javax.swing.tree.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.channels.FileChannel;
@@ -41,16 +44,16 @@ import static tools.crypto.ArithmeticalFunctions.dec2XBin;
 import static tools.string.StringHelper.*;
 
 /**
- * {@code FileManager} poskytuje GUI-based prohlížeč souborů v systému,
+ * {@code FileManager} poskytuje moderní GUI-based prohlížeč souborů v systému,
  * se speciálním zpracováním pro soubory ".tlg" (dekódování a přidání do seznamu).
  * <p>
  * Klíčové vlastnosti:
  * <ul>
- *   <li>Zobrazuje strom souborů a složek, ukotvený v kořenech souborového systému.</li>
- *   <li>Zobrazuje detaily o vybraném souboru (jméno, cesta, MD4 pro .tlg soubory atd.).</li>
- *   <li>Umožňuje mazání a otevírání souborů, plus sledování změn v aktuálně vybrané složce.</li>
- *   <li>Integrace s {@link JList}, která drží objekty {@link TlgTemp}, kam lze přidávat
- *       nově dekódovaná data ze souborů .tlg.</li>
+ *   <li>Moderní FlatLaf design s system colors a typography</li>
+ *   <li>Zobrazuje strom souborů a složek s moderním stromovým rendererem</li>
+ *   <li>Zobrazuje detaily o vybraném souboru s moderním layoutem</li>
+ *   <li>Moderní toolbar s hover efekty a ikonami</li>
+ *   <li>Integrace s JList pro TlgTemp objekty</li>
  * </ul>
  */
 public class FileManager {
@@ -110,7 +113,8 @@ public class FileManager {
     //////////////////////////////////////////////////////////////////////////////
 
     /**
-     * Vytvoří (pokud již není vytvořeno) a vrátí hlavní GUI panel pro tohoto správce souborů.
+     * Vytvoří (pokud již není vytvořeno) a vrátí hlavní GUI panel pro tohoto správce souborů
+     * s moderním FlatLaf designem.
      *
      * @param jList {@link JList} s {@link TlgTemp} objekty, do kterého
      *              se budou přidávat dekódovaná .tlg data.
@@ -126,13 +130,16 @@ public class FileManager {
             this.externalTlgList = jList;
 
             // Inicializace obecných polí
-            gui = new JPanel(new BorderLayout(3, 3));
-            gui.setBorder(new EmptyBorder(5, 5, 5, 5));
+            gui = new JPanel(new BorderLayout(8, 8));
+            gui.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+            gui.setBackground(UIManager.getColor("Panel.background"));
+
             fileSystemView = FileSystemView.getFileSystemView();
             desktop = Desktop.getDesktop();
 
             // Vytvoření panelu s detailem souboru
-            JPanel detailView = new JPanel(new BorderLayout(3, 3));
+            JPanel detailView = new JPanel(new BorderLayout(8, 8));
+            detailView.setBackground(UIManager.getColor("Panel.background"));
 
             // Vytvoření kořenového uzlu pro strom
             DefaultMutableTreeNode root = new DefaultMutableTreeNode();
@@ -141,29 +148,30 @@ public class FileManager {
             // Vytvoření stromu souborového systému
             buildFileSystemTree(root);
             JScrollPane treeScroll = new JScrollPane(tree);
+            styleModernScrollPane(treeScroll);
 
             // Nastavení velikosti panelu se stromem
             tree.setVisibleRowCount(15);
             Dimension preferredSize = treeScroll.getPreferredSize();
-            Dimension widePreferred = new Dimension(200, (int) preferredSize.getHeight());
+            Dimension widePreferred = new Dimension(250, (int) preferredSize.getHeight());
             treeScroll.setPreferredSize(widePreferred);
 
             // Postavení spodního panelu s detailními informacemi
             JPanel fileView = buildFileDetailsPanel();
-            detailView.add(fileView, BorderLayout.SOUTH);
+            detailView.add(fileView, BorderLayout.CENTER);
 
             // Přidáme strom + detailní panel do splitu
-            JSplitPane splitPane =
-                    new JSplitPane(JSplitPane.VERTICAL_SPLIT, treeScroll, detailView);
-            splitPane.setResizeWeight(1);
+            JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, treeScroll, detailView);
+            splitPane.setResizeWeight(0.6);
+            splitPane.setBorder(null);
+            splitPane.setOpaque(false);
+            splitPane.setBackground(UIManager.getColor("Panel.background"));
+
             gui.add(splitPane, BorderLayout.CENTER);
 
             // Přidáme progress bar do spodní části
-            JPanel simpleOutput = new JPanel(new BorderLayout(3, 3));
-            progressBar = new JProgressBar();
-            progressBar.setVisible(false);
-            simpleOutput.add(progressBar, BorderLayout.EAST);
-            gui.add(simpleOutput, BorderLayout.SOUTH);
+            JPanel bottomPanel = createModernBottomPanel();
+            gui.add(bottomPanel, BorderLayout.SOUTH);
 
             LOG.debug("FileManager GUI úspěšně inicializováno.");
         }
@@ -171,10 +179,49 @@ public class FileManager {
     }
 
     /**
-     * Vytvoří strom souborového systému, naplní kořenové uzly (např. disky)
-     * a přidá {@link TreeSelectionListener}.
-     *
-     * @param root kořenový uzel pro {@link DefaultTreeModel}
+     * Vytvoří moderní spodní panel s progress barem.
+     */
+    private JPanel createModernBottomPanel() {
+        JPanel bottomPanel = new JPanel(new BorderLayout(8, 8));
+        bottomPanel.setBackground(UIManager.getColor("Panel.background"));
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+
+        progressBar = createModernProgressBar();
+        progressBar.setVisible(false);
+
+        bottomPanel.add(progressBar, BorderLayout.CENTER);
+        return bottomPanel;
+    }
+
+    /**
+     * Vytvoří moderní progress bar.
+     */
+    private JProgressBar createModernProgressBar() {
+        JProgressBar progressBar = new JProgressBar();
+        progressBar.setFont(UIManager.getFont("ProgressBar.font"));
+        if (progressBar.getFont() == null) {
+            progressBar.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+        }
+        progressBar.setBorder(createModernBorder());
+        progressBar.setForeground(UIManager.getColor("ProgressBar.foreground"));
+        progressBar.setBackground(UIManager.getColor("ProgressBar.background"));
+        progressBar.setStringPainted(true);
+        progressBar.setString("Načítání...");
+        return progressBar;
+    }
+
+    /**
+     * Aplikuje moderní styling na scroll pane.
+     */
+    private void styleModernScrollPane(JScrollPane scrollPane) {
+        scrollPane.setBorder(createModernBorder());
+        scrollPane.setBackground(UIManager.getColor("ScrollPane.background"));
+        scrollPane.getViewport().setBackground(UIManager.getColor("Tree.background"));
+        scrollPane.setOpaque(true);
+    }
+
+    /**
+     * Vytvoří strom souborového systému s moderním stylingem.
      */
     private void buildFileSystemTree(DefaultMutableTreeNode root) {
         LOG.debug("Vytvářím strom souborového systému.");
@@ -204,7 +251,7 @@ public class FileManager {
             DefaultMutableTreeNode node = new DefaultMutableTreeNode(fileSystemRoot);
             root.add(node);
 
-            // Do stromu přidáváme jen složky a soubory .tlg
+            // Do stromu přidáváme jen složky a soubory .tlg/.pdf
             File[] files = fileSystemView.getFiles(fileSystemRoot, true);
             for (File file : files) {
                 if (file.getName().endsWith(".pdf") || file.getName().endsWith(".tlg") || file.isDirectory()) {
@@ -213,66 +260,77 @@ public class FileManager {
             }
         }
 
-        // Nastavení JTree
+        // Nastavení JTree s moderním stylingem
         tree = new JTree(treeModel);
         tree.setRootVisible(false);
         tree.setCellRenderer(new FileTreeCellRenderer());
         tree.addTreeSelectionListener(treeSelectionListener);
         tree.expandRow(0);
 
+        // Moderní styling pro tree
+        tree.setBackground(UIManager.getColor("Tree.background"));
+        tree.setForeground(UIManager.getColor("Tree.foreground"));
+        tree.setFont(UIManager.getFont("Tree.font"));
+        tree.setRowHeight(24); // Větší výška řádků pro moderní vzhled
+        tree.setShowsRootHandles(true);
+
         LOG.debug("Strom souborového systému úspěšně vytvořen a inicializován.");
     }
 
     /**
-     * Vytvoří a vrátí panel s detaily o souboru (včetně toolbaru s
-     * otevřít/vytisknout/vymazat, plus grid s atributy).
+     * Vytvoří a vrátí panel s detaily o souboru s moderním designem.
      */
     private JPanel buildFileDetailsPanel() {
-        LOG.debug("Vytvářím panel s detaily o souboru (toolBar, grid).");
+        LOG.debug("Vytvářím panel s detaily o souboru (moderní toolbar, grid).");
 
         // Vysokoúrovňový kontejner
-        JPanel fileView = new JPanel(new BorderLayout(3, 3));
+        JPanel fileView = new JPanel(new BorderLayout(8, 8));
+        fileView.setBackground(UIManager.getColor("Panel.background"));
 
-        // Vytvoření toolbaru
-        JToolBar toolBar = new JToolBar();
-        toolBar.setFloatable(false);
+        // Vytvoření moderního toolbaru
+        JPanel toolBar = createModernToolBar();
+        fileView.add(toolBar, BorderLayout.NORTH);
+
+        // Hlavní detailní panel
+        JPanel fileMainDetails = createModernDetailsPanel();
+        fileView.add(fileMainDetails, BorderLayout.CENTER);
+
+        LOG.debug("Panel s detaily o souboru vytvořen.");
+        return fileView;
+    }
+
+    /**
+     * Vytvoří moderní toolbar s tlačítky.
+     */
+    private JPanel createModernToolBar() {
+        JPanel toolBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+        toolBar.setBackground(UIManager.getColor("Panel.background"));
+        toolBar.setBorder(createModernBorder());
 
         // Tlačítko "Otevřít"
-        openFile = new JButton("Otevřít");
-        openFile.setMnemonic('o');
-        openFile.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                LOG.debug("Kliknuto na tlačítko 'Otevřít'.");
-                handleOpenFileAction();
-                gui.repaint();
-            }
+        openFile = createModernButton("📂 Otevřít", "accent");
+        openFile.addActionListener(e -> {
+            LOG.debug("Kliknuto na tlačítko 'Otevřít'.");
+            handleOpenFileAction();
+            gui.repaint();
         });
         toolBar.add(openFile);
 
         // Tlačítko "Vymazat"
-        deleteFile = new JButton("Vymazat");
-        deleteFile.setMnemonic('d');
-        deleteFile.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                LOG.debug("Kliknuto na tlačítko 'Vymazat'.");
-                deleteFile();
-                gui.repaint();
-            }
+        deleteFile = createModernButton("🗑️ Vymazat", "danger");
+        deleteFile.addActionListener(e -> {
+            LOG.debug("Kliknuto na tlačítko 'Vymazat'.");
+            deleteFile();
+            gui.repaint();
         });
         toolBar.add(deleteFile);
 
         // Tlačítko "Vytisknout"
-        printFile = new JButton("Vytisknout");
-        printFile.setMnemonic('p');
-        printFile.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                LOG.debug("Kliknuto na tlačítko 'Vytisknout'.");
-                handlePrintFileAction();
-                gui.repaint();
-            }
+        printFile = createModernButton("🖨️ Vytisknout", "primary");
+        printFile.addActionListener(e -> {
+            LOG.debug("Kliknuto na tlačítko 'Vytisknout'.");
+            handlePrintFileAction();
+            gui.repaint();
         });
         toolBar.add(printFile);
 
@@ -280,67 +338,192 @@ public class FileManager {
         openFile.setEnabled(desktop.isSupported(Desktop.Action.OPEN));
         printFile.setEnabled(desktop.isSupported(Desktop.Action.PRINT));
 
-        // Mezera v toolbaru
-        toolBar.addSeparator();
-        toolBar.addSeparator();
+        return toolBar;
+    }
 
-        // Hlavní detailní panel
-        JPanel fileMainDetails = new JPanel(new BorderLayout(4, 2));
-        fileMainDetails.setBorder(new EmptyBorder(0, 6, 0, 6));
+    /**
+     * Vytvoří moderní tlačítko s hover efekty.
+     */
+    private JButton createModernButton(String text, String colorType) {
+        JButton button = new JButton(text);
 
-        JPanel fileDetailsLabels = new JPanel(new GridLayout(0, 1, 2, 2));
-        fileMainDetails.add(fileDetailsLabels, BorderLayout.WEST);
+        // Základní styling
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(true);
+        button.setOpaque(true);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        JPanel fileDetailsValues = new JPanel(new GridLayout(0, 1, 2, 2));
-        fileMainDetails.add(fileDetailsValues, BorderLayout.CENTER);
+        // Font
+        Font buttonFont = UIManager.getFont("Button.font");
+        if (buttonFont == null) {
+            buttonFont = new Font(Font.SANS_SERIF, Font.BOLD, 12);
+        } else {
+            buttonFont = buttonFont.deriveFont(Font.BOLD, 12f);
+        }
+        button.setFont(buttonFont);
 
-        fileDetailsLabels.add(new JLabel("Soubor", JLabel.TRAILING));
-        fileName = new JLabel();
-        fileDetailsValues.add(fileName);
-
-        fileDetailsLabels.add(new JLabel("Cesta", JLabel.TRAILING));
-        path = new JTextField(5);
-        path.setEditable(false);
-        fileDetailsValues.add(path);
-
-        fileDetailsLabels.add(new JLabel("MD4", JLabel.TRAILING));
-        date = new JLabel();
-        fileDetailsValues.add(date);
-
-        fileDetailsLabels.add(new JLabel("Velikost", JLabel.TRAILING));
-        size = new JLabel();
-        fileDetailsValues.add(size);
-
-        fileDetailsLabels.add(new JLabel("Typ", JLabel.TRAILING));
-        JPanel flags = new JPanel(new FlowLayout(FlowLayout.LEADING, 4, 0));
-        isDirectory = new JRadioButton("Directory");
-        isDirectory.setEnabled(false);
-        flags.add(isDirectory);
-        isFile = new JRadioButton("File");
-        isFile.setEnabled(false);
-        flags.add(isFile);
-        fileDetailsValues.add(flags);
-
-        // Deaktivujeme popisky
-        int count = fileDetailsLabels.getComponentCount();
-        for (int ii = 0; ii < count; ii++) {
-            fileDetailsLabels.getComponent(ii).setEnabled(false);
+        // Barvy podle typu
+        Color backgroundColor, foregroundColor;
+        switch (colorType) {
+            case "accent":
+                backgroundColor = UIManager.getColor("Component.accentColor");
+                if (backgroundColor == null) backgroundColor = new Color(0, 123, 255);
+                foregroundColor = Color.WHITE;
+                break;
+            case "danger":
+                backgroundColor = UIManager.getColor("Actions.Red");
+                if (backgroundColor == null) backgroundColor = new Color(220, 53, 69);
+                foregroundColor = Color.WHITE;
+                break;
+            case "primary":
+                backgroundColor = UIManager.getColor("Actions.Blue");
+                if (backgroundColor == null) backgroundColor = new Color(40, 167, 69);
+                foregroundColor = Color.WHITE;
+                break;
+            default:
+                backgroundColor = UIManager.getColor("Button.background");
+                foregroundColor = UIManager.getColor("Button.foreground");
         }
 
-        // CheckBoxy pro čtení/zápis/spuštění (nejsou přidány do layoutu, ale k dispozici)
-        readable = new JCheckBox("Read  ");
-        readable.setMnemonic('a');
-        writable = new JCheckBox("Write  ");
-        writable.setMnemonic('w');
-        executable = new JCheckBox("Execute");
-        executable.setMnemonic('x');
+        button.setBackground(backgroundColor);
+        button.setForeground(foregroundColor);
+        button.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
 
-        // Kompletace panelu
-        fileView.add(toolBar, BorderLayout.NORTH);
-        fileView.add(fileMainDetails, BorderLayout.CENTER);
+        // Hover efekty
+        Color finalBackgroundColor = backgroundColor;
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                Color hoverColor = finalBackgroundColor.darker();
+                button.setBackground(hoverColor);
+            }
 
-        LOG.debug("Panel s detaily o souboru vytvořen.");
-        return fileView;
+            @Override
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(finalBackgroundColor);
+            }
+        });
+
+        return button;
+    }
+
+    /**
+     * Vytvoří moderní panel s detaily o souboru.
+     */
+    private JPanel createModernDetailsPanel() {
+        JPanel fileMainDetails = new JPanel(new BorderLayout(8, 8));
+        fileMainDetails.setBackground(UIManager.getColor("Panel.background"));
+        fileMainDetails.setBorder(createModernBorder());
+
+        // Levý panel s popisky
+        JPanel fileDetailsLabels = new JPanel(new GridLayout(0, 1, 4, 8));
+        fileDetailsLabels.setBackground(UIManager.getColor("Panel.background"));
+        fileMainDetails.add(fileDetailsLabels, BorderLayout.WEST);
+
+        // Pravý panel s hodnotami
+        JPanel fileDetailsValues = new JPanel(new GridLayout(0, 1, 4, 8));
+        fileDetailsValues.setBackground(UIManager.getColor("Panel.background"));
+        fileMainDetails.add(fileDetailsValues, BorderLayout.CENTER);
+
+        // Vytvoření komponent s moderním stylingem
+        createDetailComponents(fileDetailsLabels, fileDetailsValues);
+
+        return fileMainDetails;
+    }
+
+    /**
+     * Vytvoří komponenty pro zobrazení detailů souboru.
+     */
+    private void createDetailComponents(JPanel labelsPanel, JPanel valuesPanel) {
+        Font labelFont = UIManager.getFont("Label.font");
+        if (labelFont != null) {
+            labelFont = labelFont.deriveFont(Font.BOLD, 12f);
+        }
+
+        // Soubor
+        JLabel fileLabel = new JLabel("📄 Soubor:", JLabel.TRAILING);
+        fileLabel.setFont(labelFont);
+        labelsPanel.add(fileLabel);
+        fileName = new JLabel();
+        valuesPanel.add(fileName);
+
+        // Cesta
+        JLabel pathLabel = new JLabel("📂 Cesta:", JLabel.TRAILING);
+        pathLabel.setFont(labelFont);
+        labelsPanel.add(pathLabel);
+        path = new JTextField(5);
+        path.setEditable(false);
+        path.setBorder(createModernBorder());
+        path.setBackground(UIManager.getColor("TextField.background"));
+        valuesPanel.add(path);
+
+        // MD4
+        JLabel md4Label = new JLabel("🔐 MD4:", JLabel.TRAILING);
+        md4Label.setFont(labelFont);
+        labelsPanel.add(md4Label);
+        date = new JLabel();
+        date.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
+        valuesPanel.add(date);
+
+        // Velikost
+        JLabel sizeLabel = new JLabel("📏 Velikost:", JLabel.TRAILING);
+        sizeLabel.setFont(labelFont);
+        labelsPanel.add(sizeLabel);
+        size = new JLabel();
+        valuesPanel.add(size);
+
+        // Typ
+        JLabel typeLabel = new JLabel("🗂️ Typ:", JLabel.TRAILING);
+        typeLabel.setFont(labelFont);
+        labelsPanel.add(typeLabel);
+        JPanel flags = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        flags.setBackground(UIManager.getColor("Panel.background"));
+        isDirectory = new JRadioButton("Složka");
+        isDirectory.setEnabled(false);
+        isDirectory.setBackground(UIManager.getColor("Panel.background"));
+        flags.add(isDirectory);
+        isFile = new JRadioButton("Soubor");
+        isFile.setEnabled(false);
+        isFile.setBackground(UIManager.getColor("Panel.background"));
+        flags.add(isFile);
+        valuesPanel.add(flags);
+
+        // Checkboxy pro čtení/zápis/spuštění
+        readable = new JCheckBox("Čtení");
+        readable.setBackground(UIManager.getColor("Panel.background"));
+        writable = new JCheckBox("Zápis");
+        writable.setBackground(UIManager.getColor("Panel.background"));
+        executable = new JCheckBox("Spuštění");
+        executable.setBackground(UIManager.getColor("Panel.background"));
+    }
+
+    /**
+     * Vytvoří moderní border s kulatými rohy.
+     */
+    private AbstractBorder createModernBorder() {
+        return new AbstractBorder() {
+            @Override
+            public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                Color borderColor = UIManager.getColor("Component.borderColor");
+                if (borderColor == null) {
+                    borderColor = new Color(200, 200, 200);
+                }
+
+                g2d.setColor(borderColor);
+                g2d.setStroke(new BasicStroke(1f));
+                g2d.drawRoundRect(x, y, width - 1, height - 1, 8, 8);
+                g2d.dispose();
+            }
+
+            @Override
+            public Insets getBorderInsets(Component c) {
+                return new Insets(8, 8, 8, 8);
+            }
+        };
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -348,11 +531,7 @@ public class FileManager {
     //////////////////////////////////////////////////////////////////////////////
 
     /**
-     * Volá se při stisku tlačítka "Otevřít".
-     * <ul>
-     *   <li>Pokud soubor končí na ".tlg", dekóduje jej a přidá do {@code externalTlgList}.</li>
-     *   <li>Jinak se pokusí otevřít soubor pomocí výchozí desktopové aplikace.</li>
-     * </ul>
+     * Volá se při stisku tlačítka "Otevřít" s moderním progress indikátorem.
      */
     private void handleOpenFileAction() {
         if (currentFile == null) {
@@ -360,150 +539,152 @@ public class FileManager {
             return;
         }
 
-        try {
-            if (currentFile.getName().endsWith(".tlg")) {
-                LOG.info("Otevírám/decóduji TLG soubor: [{}]", currentFile.getAbsolutePath());
-                decodeTlgFile(currentFile, externalTlgList);
-            } else {
-                LOG.info("Otevírám soubor pomocí Desktop: [{}]", currentFile.getAbsolutePath());
-                desktop.open(currentFile);
+        progressBar.setVisible(true);
+        progressBar.setIndeterminate(true);
+        progressBar.setString("Otevírám soubor...");
+
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                if (currentFile.getName().endsWith(".tlg")) {
+                    LOG.info("Otevírám/decóduji TLG soubor: [{}]", currentFile.getAbsolutePath());
+                    decodeTlgFile(currentFile, externalTlgList);
+                } else {
+                    LOG.info("Otevírám soubor pomocí Desktop: [{}]", currentFile.getAbsolutePath());
+                    desktop.open(currentFile);
+                }
+                return null;
             }
-        } catch (Throwable t) {
-            LOG.error("Chyba při otevírání souboru: {}", t.getMessage(), t);
-            showThrowable(t);
-        }
+
+            @Override
+            protected void done() {
+                progressBar.setVisible(false);
+                progressBar.setIndeterminate(false);
+                try {
+                    get(); // Zkontroluj případné exceptions
+                } catch (Exception e) {
+                    LOG.error("Chyba při otevírání souboru: {}", e.getMessage(), e);
+                    showThrowable(e);
+                }
+            }
+        };
+        worker.execute();
     }
 
     /**
-     * Volá se při stisku tlačítka "Vytisknout". Pokusí se vytisknout {@link #currentFile}
-     * přes systémový Desktop.
+     * Volá se při stisku tlačítka "Vytisknout" s moderním progress indikátorem.
      */
     private void handlePrintFileAction() {
         if (currentFile == null) {
             LOG.warn("Nebyl vybrán žádný soubor k tisku.");
             return;
         }
-        try {
-            LOG.info("Tisk souboru: [{}]", currentFile.getAbsolutePath());
 
-            if (currentFile.getName().endsWith(".tlg"))
-            {
+        progressBar.setVisible(true);
+        progressBar.setIndeterminate(true);
+        progressBar.setString("Připravuji tisk...");
 
-                JList<TlgTemp> jList = new JList();
-                DefaultListModel<TlgTemp> dlm = new DefaultListModel<>();
-                jList.setModel(dlm);
-                decodeTlgFile(currentFile,jList);
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                LOG.info("Tisk souboru: [{}]", currentFile.getAbsolutePath());
 
+                if (currentFile.getName().endsWith(".tlg")) {
+                    createPdfFromTlg();
+                } else {
+                    desktop.print(currentFile);
+                }
+                return null;
+            }
 
+            @Override
+            protected void done() {
+                progressBar.setVisible(false);
+                progressBar.setIndeterminate(false);
                 try {
-                    File parentDir = currentFile.getParentFile();
-                    if (parentDir == null) {
-                        LOG.error("Parent folder not found; cannot save PDF.");
-                        return;
-                    }
-
-                    File pdfFile = new File(parentDir,currentFile.getName().replace(".tlg",".pdf"));
-                    PdfWriter writer = new PdfWriter(pdfFile);
-                    PdfDocument pdfDoc = new PdfDocument(writer);
-                    Document document = new Document(pdfDoc);
-
-                for (int ii = 0; ii < jList.getModel().getSize(); ii++)
-                {
-                    TlgTemp temp = (TlgTemp) jList.getModel().getElementAt(ii);
-
-                    for (int iii =0;iii<temp.defaultListModel.size();iii++)
-                    {
-                        IPacket packet = (IPacket) temp.defaultListModel.get(iii);
-
-                        document.add(new Paragraph(packet.getSimpleView()));
-
-                        Component jComponent=packet.getGraphicalVisualization();
-
-                        if (jComponent != null)
-                        {
-
-                            document.add(componentToPdf(jComponent));
-                        }
-
-                    }
-
+                    get();
+                } catch (Exception e) {
+                    LOG.error("Chyba při tisku souboru: {}", e.getMessage(), e);
+                    showThrowable(e);
                 }
+            }
+        };
+        worker.execute();
+    }
 
+    /**
+     * Vytvoří PDF z TLG souboru.
+     */
+    private void createPdfFromTlg() throws Exception {
+        JList<TlgTemp> jList = new JList<>();
+        DefaultListModel<TlgTemp> dlm = new DefaultListModel<>();
+        jList.setModel(dlm);
+        decodeTlgFile(currentFile, jList);
 
+        File parentDir = currentFile.getParentFile();
+        if (parentDir == null) {
+            LOG.error("Parent folder not found; cannot save PDF.");
+            return;
+        }
 
+        File pdfFile = new File(parentDir, currentFile.getName().replace(".tlg", ".pdf"));
+        PdfWriter writer = new PdfWriter(pdfFile);
+        PdfDocument pdfDoc = new PdfDocument(writer);
+        Document document = new Document(pdfDoc);
 
-                LOG.info("Saving PDF to: " + pdfFile.getAbsolutePath());
+        for (int ii = 0; ii < jList.getModel().getSize(); ii++) {
+            TlgTemp temp = (TlgTemp) jList.getModel().getElementAt(ii);
 
+            for (int iii = 0; iii < temp.defaultListModel.size(); iii++) {
+                IPacket packet = (IPacket) temp.defaultListModel.get(iii);
 
+                document.add(new Paragraph(packet.getSimpleView()));
 
-                    document.close();
-                    LOG.info("PDF successfully created.");
-                } catch (IOException e) {
-
-                    LOG.error(e.getMessage());
+                Component jComponent = packet.getGraphicalVisualization();
+                if (jComponent != null) {
+                    document.add(componentToPdf(jComponent));
                 }
-
             }
-            else
-            {
-                desktop.print(currentFile);
+        }
 
+        LOG.info("Saving PDF to: " + pdfFile.getAbsolutePath());
+        document.close();
+        LOG.info("PDF successfully created.");
+    }
+
+    /**
+     * Převede komponentu na PDF obrázek.
+     */
+    private static com.itextpdf.layout.element.Image componentToPdf(Component comp) {
+        try {
+            Dimension dim = comp.getPreferredSize();
+            BufferedImage bufferedImage = new BufferedImage(dim.width, dim.height, BufferedImage.TYPE_INT_RGB);
+
+            Graphics2D g2 = bufferedImage.createGraphics();
+            g2.setColor(Color.WHITE);
+            g2.fillRect(0, 0, dim.width, dim.height);
+
+            comp.setSize(dim);
+            comp.printAll(g2);
+            g2.dispose();
+
+            try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                ImageIO.write(bufferedImage, "png", baos);
+                ImageData imageData = ImageDataFactory.create(baos.toByteArray());
+                return new com.itextpdf.layout.element.Image(imageData);
             }
-
-
-
-
-
         } catch (Throwable t) {
-            LOG.error("Chyba při tisku souboru: {}", t.getMessage(), t);
-            showThrowable(t);
+            return null;
         }
     }
-
-
-    private static  com.itextpdf.layout.element.Image componentToPdf(Component comp) {
-        // Step 1: Render the component to a BufferedImage
-        // Ensure the component has a valid size (layout done),
-        // or manually setPreferredSize and call comp.doLayout() if needed.
-        Dimension dim = comp.getPreferredSize();
-        BufferedImage bufferedImage = new BufferedImage(dim.width, dim.height, BufferedImage.TYPE_INT_RGB);
-
-        Graphics2D g2 = bufferedImage.createGraphics();
-        // Optional: set a background if needed
-        g2.setColor(Color.WHITE);
-        g2.fillRect(0, 0, dim.width, dim.height);
-
-        // Actually render the component
-        comp.setSize(dim);      // Make sure the component matches its preferred size
-        comp.printAll(g2);      // or paint(g2)
-        g2.dispose();
-
-        // Step 2: Convert the BufferedImage to an iText ImageData
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            ImageIO.write(bufferedImage, "png", baos);
-            ImageData imageData = ImageDataFactory.create(baos.toByteArray());
-            com.itextpdf.layout.element.Image image =
-                    new com.itextpdf.layout.element.Image(imageData);
-
-            return image;
-        }
-        catch (Throwable t) {}
-
-        return null;
-    }
-
 
     /**
      * Dekóduje obsah ".tlg" souboru a přidá nový {@code TlgTemp} do
      * zadaného {@link JList}.
-     *
-     * @param file .tlg soubor k dekódování
-     * @param jList {@link JList} kam ukládáme výsledek
      */
     private void decodeTlgFile(File file, JList<TlgTemp> jList) {
         LOG.debug("Spouštím dekódování TLG souboru: {}", file.getName());
 
-        // 1) Čtení obsahu do binárního řetězce
         StringBuilder builder = new StringBuilder();
         try (InputStream inputStream = new FileInputStream(file)) {
             int byteRead;
@@ -516,12 +697,10 @@ public class FileManager {
             throw new RuntimeException(ex);
         }
 
-        // 2) Převod na HEX a dekódování
         String hexData = bin2Hex(builder.toString());
         LOG.trace("HexData pro TLG soubor: {}", hexData);
         String decoded = TelegramDecoder.decodeTelegram(hexData);
 
-        // 3) Uložení do seznamu
         @SuppressWarnings("unchecked")
         DefaultListModel<TlgTemp> model = (DefaultListModel<TlgTemp>) jList.getModel();
         model.add(0, new TlgTemp("", decoded));
@@ -530,32 +709,36 @@ public class FileManager {
     }
 
     /**
-     * Pokusí se smazat aktuálně vybraný soubor (po potvrzení).
+     * Pokusí se smazat aktuálně vybraný soubor (po potvrzení) s moderním dialogem.
      */
     private void deleteFile() {
         if (currentFile == null) {
             LOG.warn("Žádný soubor k odstranění nebyl vybrán.");
-            showErrorMessage("No file selected for deletion.", "Select File");
+            showModernErrorMessage("Nebyl vybrán žádný soubor", "Vyberte soubor");
             return;
         }
 
         LOG.info("Žádost o smazání souboru: {}", currentFile.getAbsolutePath());
+
         int result = JOptionPane.showConfirmDialog(
                 gui,
-                "Skutečně vymazat?",
-                "Vymazat",
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.ERROR_MESSAGE
+                "Skutečně chcete vymazat soubor?\n" + currentFile.getName(),
+                "Potvrdit smazání",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
         );
-        if (result == JOptionPane.OK_OPTION) {
+
+        if (result == JOptionPane.YES_OPTION) {
             try {
                 if (currentFile.isDirectory()) {
                     LOG.warn("Pokoušíte se vymazat složku, tato akce není povolena.");
+                    showModernErrorMessage("Nelze smazat složku", "Chyba");
                     return;
                 }
                 boolean deleted = currentFile.delete();
                 if (!deleted) {
                     LOG.warn("Nepodařilo se vymazat soubor: {}", currentFile.getAbsolutePath());
+                    showModernErrorMessage("Nepodařilo se vymazat soubor", "Chyba při mazání");
                 } else {
                     LOG.info("Soubor úspěšně vymazán: {}", currentFile.getAbsolutePath());
                 }
@@ -573,9 +756,7 @@ public class FileManager {
     //////////////////////////////////////////////////////////////////////////////
 
     /**
-     * Vytváří nebo rozšiřuje potomky zadaného uzlu na pozadí (přes SwingWorker).
-     *
-     * @param node uzel, jehož děti zobrazujeme
+     * Vytváří nebo rozšiřuje potomky zadaného uzlu na pozadí s moderním progress indikátorem.
      */
     private void showChildren(final DefaultMutableTreeNode node) {
         LOG.debug("Načítám potomky pro uzel: {}", node);
@@ -583,6 +764,7 @@ public class FileManager {
         tree.setEnabled(false);
         progressBar.setVisible(true);
         progressBar.setIndeterminate(true);
+        progressBar.setString("Načítám složku...");
 
         SwingWorker<Void, File> worker = new SwingWorker<>() {
             @Override
@@ -600,7 +782,7 @@ public class FileManager {
             @Override
             protected void process(List<File> chunks) {
                 for (File child : chunks) {
-                    if (child.getName().endsWith(".tlg") || child.isDirectory()) {
+                    if (child.getName().endsWith(".tlg") || child.getName().endsWith(".pdf") || child.isDirectory()) {
                         node.add(new DefaultMutableTreeNode(child));
                     }
                 }
@@ -618,10 +800,7 @@ public class FileManager {
     }
 
     /**
-     * Aktualizuje UI komponenty dle detailů souboru (jméno, cesta, velikost,
-     * MD4 pro .tlg, atd.).
-     *
-     * @param file {@link File}, který zobrazujeme
+     * Aktualizuje UI komponenty dle detailů souboru s moderním stylingem.
      */
     private void setFileDetails(File file) {
         LOG.debug("Zobrazuji detaily pro soubor: {}", file);
@@ -631,40 +810,16 @@ public class FileManager {
 
         fileName.setIcon(icon);
         fileName.setText(fileSystemView.getSystemDisplayName(file));
+        fileName.setFont(UIManager.getFont("Label.font"));
+
         path.setText(file.getPath());
-        size.setText(file.length() + " bytes");
+        size.setText(formatFileSize(file.length()));
 
         // Pro .tlg soubory spočítáme MD4
         if (file.getName().endsWith(".tlg")) {
-            LOG.debug("Soubor je .tlg => výpočet MD4.");
-            try (InputStream inputStream = new FileInputStream(file)) {
-                StringBuilder builder = new StringBuilder();
-                int byteRead;
-                while ((byteRead = inputStream.read()) != -1) {
-                    builder.append(dec2XBin(String.valueOf(byteRead), 8));
-                }
-                String tmp = builder.toString();
-
-                // Výpočet MD4 hashe
-                MessageDigest md = new CalculatorMD4();
-                md.update(splitBinaryStringToByteArray(tmp));
-                byte[] digest = md.digest();
-
-                String hexDigest = bytesToHex(digest);
-                date.setText(hexDigest);
-
-                LOG.trace("MD4 pro soubor .tlg: {}", hexDigest);
-
-                // Příklad: vytvoříme nebo načteme PH objekt
-                PH ph = new PH(new String[]{tmp});
-                // Dle potřeby lze s ph dále pracovat
-
-            } catch (IOException ex) {
-                LOG.error("Chyba při výpočtu MD4: {}", ex.getMessage(), ex);
-                throw new RuntimeException(ex);
-            }
+            calculateMd4ForTlgFile(file);
         } else {
-            date.setText("");
+            date.setText("—");
         }
 
         // Flagy
@@ -677,15 +832,60 @@ public class FileManager {
         gui.repaint();
     }
 
+    /**
+     * Formátuje velikost souboru do čitelné podoby.
+     */
+    private String formatFileSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
+        if (bytes < 1024 * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024.0));
+        return String.format("%.1f GB", bytes / (1024.0 * 1024.0 * 1024.0));
+    }
+
+    /**
+     * Vypočítá MD4 hash pro TLG soubor.
+     */
+    private void calculateMd4ForTlgFile(File file) {
+        SwingWorker<String, Void> worker = new SwingWorker<>() {
+            @Override
+            protected String doInBackground() throws Exception {
+                LOG.debug("Soubor je .tlg => výpočet MD4.");
+                try (InputStream inputStream = new FileInputStream(file)) {
+                    StringBuilder builder = new StringBuilder();
+                    int byteRead;
+                    while ((byteRead = inputStream.read()) != -1) {
+                        builder.append(dec2XBin(String.valueOf(byteRead), 8));
+                    }
+                    String tmp = builder.toString();
+
+                    MessageDigest md = new CalculatorMD4();
+                    md.update(splitBinaryStringToByteArray(tmp));
+                    byte[] digest = md.digest();
+                    return bytesToHex(digest);
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    String hexDigest = get();
+                    date.setText(hexDigest);
+                    LOG.trace("MD4 pro soubor .tlg: {}", hexDigest);
+                } catch (Exception e) {
+                    LOG.error("Chyba při výpočtu MD4: {}", e.getMessage(), e);
+                    date.setText("Chyba při výpočtu");
+                }
+            }
+        };
+        worker.execute();
+    }
+
     //////////////////////////////////////////////////////////////////////////////
     //                            DIRECTORY WATCHER
     //////////////////////////////////////////////////////////////////////////////
 
     /**
-     * Vrátí aktuálně vybranou složku (pokud je {@link #currentFile} složka,
-     * tak ji, jinak vrátí její parent).
-     *
-     * @return aktuální složka, nebo {@code null} není-li žádný soubor vybrán
+     * Vrátí aktuálně vybranou složku.
      */
     public File getCurrentFolder() {
         if (currentFile == null) {
@@ -695,8 +895,7 @@ public class FileManager {
     }
 
     /**
-     * Spustí sledování (watch service) pro aktuálně vybranou složku, pokud je platná.
-     * Pokud uživatel zvolí jinou složku, volá se znovu.
+     * Spustí sledování pro aktuálně vybranou složku.
      */
     public void watchCurrentFolder() {
         File folder = getCurrentFolder();
@@ -714,7 +913,7 @@ public class FileManager {
     }
 
     /**
-     * Zastaví sledování aktuální složky (pokud běží).
+     * Zastaví sledování aktuální složky.
      */
     public void stopWatchingCurrentFolder() {
         if (directoryWatcher != null) {
@@ -725,9 +924,7 @@ public class FileManager {
     }
 
     /**
-     * Obnoví (refresh) uzel dané složky ve stromu - vyčistí děti a znovu je načte.
-     *
-     * @param folder složka, kterou chceme obnovit
+     * Obnoví uzel dané složky ve stromu.
      */
     public void refreshFolder(File folder) {
         LOG.debug("Obnovuji složku ve stromu: {}", folder);
@@ -739,13 +936,11 @@ public class FileManager {
         }
         DefaultMutableTreeNode folderNode = (DefaultMutableTreeNode) folderPath.getLastPathComponent();
 
-        // Vymažeme všechny potomky
         folderNode.removeAllChildren();
 
-        // Znovu přidáme .tlg i složky
         File[] files = fileSystemView.getFiles(folder, true);
         for (File child : files) {
-            if (child.getName().endsWith(".pdf") ||child.getName().endsWith(".tlg") || child.isDirectory()) {
+            if (child.getName().endsWith(".pdf") || child.getName().endsWith(".tlg") || child.isDirectory()) {
                 folderNode.add(new DefaultMutableTreeNode(child));
             }
         }
@@ -753,10 +948,7 @@ public class FileManager {
     }
 
     /**
-     * Najde {@link TreePath} ve stromu pro zadaný {@link File}, nebo {@code null}, pokud nenalezen.
-     *
-     * @param find soubor, který hledáme ve stromu
-     * @return cesta k tomuto souboru, nebo {@code null}
+     * Najde TreePath ve stromu pro zadaný File.
      */
     private TreePath findTreePath(File find) {
         if (find == null) {
@@ -781,7 +973,7 @@ public class FileManager {
     //                              ERROR HANDLING
     //////////////////////////////////////////////////////////////////////////////
 
-    private void showErrorMessage(String errorMessage, String errorTitle) {
+    private void showModernErrorMessage(String errorMessage, String errorTitle) {
         LOG.warn("Zobrazuji chybovou zprávu: {}, {}", errorTitle, errorMessage);
         JOptionPane.showMessageDialog(gui, errorMessage, errorTitle, JOptionPane.ERROR_MESSAGE);
     }
@@ -798,8 +990,7 @@ public class FileManager {
     //////////////////////////////////////////////////////////////////////////////
 
     /**
-     * Volitelná metoda, která nastaví výběr na kořenový uzel v JTree (row=0).
-     * Vhodné např. pro počáteční stav.
+     * Zobrazí kořenový uzel v JTree.
      */
     public void showRootFile() {
         LOG.debug("Zobrazuji (vybírám) kořenový uzel v JTree.");
@@ -809,13 +1000,7 @@ public class FileManager {
     }
 
     /**
-     * Kopíruje jeden soubor na jiné místo pomocí {@link FileChannel}. Nový soubor
-     * zdědí práva pro čtení/zápis/spuštění od původního.
-     *
-     * @param from zdroj
-     * @param to   cíl
-     * @return {@code true}, pokud se podařilo vytvořit cílový soubor
-     * @throws IOException chyba při čtení/zápisu
+     * Kopíruje jeden soubor na jiné místo pomocí FileChannel.
      */
     public static boolean copyFile(File from, File to) throws IOException {
         LOG.debug("Kopíruji soubor z [{}] do [{}]", from.getAbsolutePath(), to.getAbsolutePath());
@@ -840,21 +1025,13 @@ public class FileManager {
     //////////////////////////////////////////////////////////////////////////////
 
     /**
-     * {@link SwingWorker}, který sleduje adresář přes {@link WatchService}.
-     * Pokud dojde k událostem ENTRY_CREATE/ENTRY_DELETE/ENTRY_MODIFY,
-     * zavolá se refresh složky.
+     * SwingWorker který sleduje adresář přes WatchService s moderním progress indikátorem.
      */
     private class DirectoryWatcher extends SwingWorker<Void, Path> {
         private final Path pathToWatch;
         private WatchService watchService;
         private boolean keepWatching = true;
 
-        /**
-         * Konstruktor DirectoryWatcher pro zadanou cestu.
-         *
-         * @param pathToWatch cesta, kterou sledujeme
-         * @throws IOException chyba při vytvoření watch servisu
-         */
         public DirectoryWatcher(Path pathToWatch) throws IOException {
             this.pathToWatch = pathToWatch;
             watchService = FileSystems.getDefault().newWatchService();
@@ -872,7 +1049,6 @@ public class FileManager {
             while (keepWatching) {
                 WatchKey key;
                 try {
-                    // Blokuje, dokud nedojde k nějaké události
                     key = watchService.take();
                 } catch (InterruptedException e) {
                     LOG.warn("DirectoryWatcher byl přerušen: {}", e.getMessage());
@@ -883,8 +1059,6 @@ public class FileManager {
                     WatchEvent<Path> ev = (WatchEvent<Path>) event;
                     Path fileName = ev.context();
                     LOG.trace("Zachycena změna: {}", fileName);
-
-                    // Publikujeme do EDT => spustí refresh v #process
                     publish(fileName);
                 }
                 boolean valid = key.reset();
@@ -898,14 +1072,10 @@ public class FileManager {
 
         @Override
         protected void process(List<Path> chunks) {
-            // Voláno na EDT; refresh složky
             LOG.debug("Provádím refresh složky (process) pro cestu: {}", pathToWatch.toAbsolutePath());
             refreshFolder(pathToWatch.toFile());
         }
 
-        /**
-         * Graceful zastavení sledování - zastaví hlavní smyčku a zavře {@link WatchService}.
-         */
         public void stopWatching() {
             LOG.debug("Ukončuji DirectoryWatcher pro složku: {}", pathToWatch);
             keepWatching = false;

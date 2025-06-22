@@ -27,11 +27,12 @@ package UI.DockingPanes;
 import ModernDocking.Dockable;
 
 import javax.swing.*;
+import javax.swing.border.AbstractBorder;
 import java.awt.*;
 
 /**
  * An abstract base class that extends {@link JPanel} and implements the {@link Dockable} interface.
- * This panel serves as a base for custom dockable panels within the application.
+ * This panel serves as a base for custom dockable panels within the application with modern styling.
  */
 public abstract class BasePanel extends JPanel implements Dockable {
 
@@ -60,13 +61,62 @@ public abstract class BasePanel extends JPanel implements Dockable {
     public BasePanel(String title, String persistentID, Icon icon) {
         // Provide a BorderLayout by default
         super(new BorderLayout());
-
+        ModernDockingCustomization.setupDockingTheme();
         this.title = title;
         this.persistentID = persistentID;
         this.icon = icon;
 
-        // Optionally, you may add any default sub-components here if needed
-        // e.g., add(new JPanel(), BorderLayout.CENTER);
+        // Apply modern styling
+        initModernStyling();
+    }
+
+    /**
+     * Initializes modern styling for the panel.
+     */
+    private void initModernStyling() {
+        // Set modern background color
+        setBackground(UIManager.getColor("Panel.background"));
+
+        // Apply modern border with rounded corners
+        setBorder(createModernBorder());
+
+        // Set modern font
+        Font defaultFont = UIManager.getFont("Panel.font");
+        if (defaultFont != null) {
+            setFont(defaultFont);
+        }
+    }
+
+    /**
+     * Creates a modern border with rounded corners and subtle shadow effect.
+     */
+    private AbstractBorder createModernBorder() {
+        return new AbstractBorder() {
+            @Override
+            public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // Subtle border color using system colors
+                Color borderColor = UIManager.getColor("Component.borderColor");
+                if (borderColor == null) {
+                    borderColor = UIManager.getColor("Panel.border");
+                }
+                if (borderColor == null) {
+                    borderColor = new Color(220, 220, 220);
+                }
+
+                g2d.setColor(borderColor);
+                g2d.setStroke(new BasicStroke(1f));
+                g2d.drawRoundRect(x, y, width - 1, height - 1, 8, 8);
+                g2d.dispose();
+            }
+
+            @Override
+            public Insets getBorderInsets(Component c) {
+                return new Insets(8, 8, 8, 8);
+            }
+        };
     }
 
     /**
@@ -98,5 +148,24 @@ public abstract class BasePanel extends JPanel implements Dockable {
     @Override
     public boolean allowPinning() {
         return true;
+    }
+
+    /**
+     * Gets the title of this panel.
+     *
+     * @return the panel title
+     */
+    public String getTitle() {
+        return title;
+    }
+
+    /**
+     * Sets the title of this panel and updates UI if necessary.
+     *
+     * @param title the new title
+     */
+    public void setTitle(String title) {
+        this.title = title;
+        repaint();
     }
 }

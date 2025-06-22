@@ -105,13 +105,15 @@ public class X_TEXT extends Variables {
     @Override
     public void setBinValue(String binValue) {
 
-        this.binValue = binValue;
+        String old = getBinValue();
 
+        this.binValue = binValue;
 
         String input = binValue.substring(0);
 
-
         text = text2Bin(input);
+
+        notifyBinaryChangeListeners(old, binValue);
 
     }
 

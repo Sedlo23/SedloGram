@@ -18,6 +18,8 @@ import tools.string.HTMLTagGenerator;
 import javax.swing.*;
 import java.awt.*;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P131 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P131.class);
@@ -64,10 +66,9 @@ public class P131 extends Packet {
         
 
         this.q_sleepsession = (Q_SLEEPSESSION) new Q_SLEEPSESSION().initValueSet(d);
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-high-priority-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     public Component getPacketComponent() {

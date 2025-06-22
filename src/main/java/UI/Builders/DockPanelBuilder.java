@@ -36,9 +36,6 @@ import static tools.string.StringHelper.createHtmlDiffTable;
  */
 public class DockPanelBuilder {
 
-
-
-
     /**
      * A {@link JList} for holding custom telegram data objects ({@link TlgTemp}).
      * This list supplies source data for the "Editor Paketu" dock.
@@ -59,12 +56,77 @@ public class DockPanelBuilder {
     public DockPanelBuilder() {
         telegramList = new JList<>();
         telegramList.setModel(new DefaultListModel<>());
+
+        // Modern FlatLaf styling using system properties
         UIManager.put("TabbedPane.tabsOverlapBorder", false);
         UIManager.put("TabbedPane.contentOpaque", true);
-        UIManager.put("TabbedPane.tabAreaInsets", new Insets(0, 2, 0, 2));
-        UIManager.put("TabbedPane.contentBorderInsets", new Insets(1, 1, 1, 1));
-        UIManager.put("TabbedPane.tabInsets", new Insets(1, 4, 1, 4));
+        UIManager.put("TabbedPane.tabAreaInsets", new Insets(4, 8, 4, 8));
+        UIManager.put("TabbedPane.contentBorderInsets", new Insets(2, 2, 2, 2));
+        UIManager.put("TabbedPane.tabInsets", new Insets(8, 16, 8, 16));
+    }
 
+    /**
+     * Ensures PH packets are always first in the packet model
+     */
+    private void ensurePHFirst(DefaultListModel<IPacket> packetModel) {
+        if (packetModel.getSize() == 0) return;
+
+        // Find all PH packets and their positions
+        java.util.List<IPacket> phPackets = new ArrayList<>();
+        java.util.List<IPacket> otherPackets = new ArrayList<>();
+
+        for (int i = 0; i < packetModel.getSize(); i++) {
+            IPacket packet = packetModel.get(i);
+            if (packet instanceof PH) {
+                phPackets.add(packet);
+            } else {
+                otherPackets.add(packet);
+            }
+        }
+
+        // Only reorganize if PH packets are not already first
+        if (!phPackets.isEmpty() && !(packetModel.get(0) instanceof PH)) {
+            // Clear the model
+            packetModel.clear();
+
+            // Add PH packets first
+            for (IPacket ph : phPackets) {
+                packetModel.addElement(ph);
+            }
+
+            // Add other packets after
+            for (IPacket other : otherPackets) {
+                packetModel.addElement(other);
+            }
+        }
+    }
+
+    /**
+     * Gets packets from model in correct order (PH first) regardless of model order
+     */
+    private java.util.List<IPacket> getPacketsInCorrectOrder(DefaultListModel<IPacket> packetModel) {
+        java.util.List<IPacket> allPackets = new ArrayList<>();
+        for (int i = 0; i < packetModel.getSize(); i++) {
+            allPackets.add(packetModel.get(i));
+        }
+
+        // Separate PH and non-PH packets
+        java.util.List<IPacket> phPackets = new ArrayList<>();
+        java.util.List<IPacket> otherPackets = new ArrayList<>();
+
+        for (IPacket packet : allPackets) {
+            if (packet instanceof PH) {
+                phPackets.add(packet);
+            } else {
+                otherPackets.add(packet);
+            }
+        }
+
+        // Return PH first, then others
+        java.util.List<IPacket> result = new ArrayList<>();
+        result.addAll(phPackets);
+        result.addAll(otherPackets);
+        return result;
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -73,30 +135,30 @@ public class DockPanelBuilder {
 
     /**
      * Creates a very simple "Zdroj" dock panel.
-     *
-     * @return a {@link SimplePanel} for the "Zdroj" section of the UI.
      */
     public SimplePanel buildZdrojDock() {
         SimplePanel zdrojDock = new SimplePanel("Zdroj", "one", null);
 
-        // Example usage: add or layout components in this panel
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+        panel.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+        panel.setBackground(UIManager.getColor("Panel.background"));
 
         zdrojDock.add(panel);
         return zdrojDock;
     }
 
     /**
-     * Builds the "Editor Paketu" dock panel, which provides an interface to create,
-     * configure, and reorder telegrams (each with multiple packets).
-     *
-     * @return the constructed "Editor Paketu" dock panel.
+     * Builds the "Editor Paketu" dock panel with DnD support.
      */
     public SimplePanel buildEditDock() {
         SimplePanel editDock = new SimplePanel("Editor Paketu", "two", null);
         DnDTabbedPane tabbedPane = new DnDTabbedPane();
+        setupPacketTypeChecker(tabbedPane);
+
+        // Modern styling for tabbed pane
+        tabbedPane.putClientProperty("JTabbedPane.tabType", "card");
+        tabbedPane.putClientProperty("JTabbedPane.showTabSeparators", true);
 
         ListModel<TlgTemp> listModel = telegramList.getModel();
 
@@ -108,15 +170,40 @@ public class DockPanelBuilder {
             for (int i = 0; i < ((DefaultListModel<TlgTemp>) listModel).size(); i++) {
                 TlgTemp telegramEntry = listModel.getElementAt(i);
 
-                // Create internal tabbed pane for IPackets in this telegram
-                JTabbedPane packetTabbedPane = new JTabbedPane();
-                packetTabbedPane.setTabPlacement(JTabbedPane.LEFT);
+                // **FIX: Ensure PH is first before building UI**
+                ensurePHFirst(telegramEntry.defaultListModel);
 
-                JProgressBar totalLengthProgressBar = new JProgressBar();
-                JButton refreshButton = new JButton("Aktualizovat");
+                // Create internal tabbed pane for IPackets in this telegram
+                DnDTabbedPane packetTabbedPane = new DnDTabbedPane();
+                setupPacketTypeChecker(packetTabbedPane);
+                setupPacketModelUpdater(packetTabbedPane, telegramEntry.defaultListModel);
+
+                packetTabbedPane.setTabPlacement(JTabbedPane.LEFT);
+                packetTabbedPane.putClientProperty("JTabbedPane.tabType", "card");
+
+                JProgressBar totalLengthProgressBar = createModernProgressBar();
+                JButton refreshButton = createModernButton("🔄 Aktualizovat", "accent");
 
                 // 1.1) Rebuilds the IPacket tabs inside a single telegram
                 Runnable updatePackets = () -> {
+                    // **FIX: Ensure PH is first in model before updating UI**
+                    ensurePHFirst(telegramEntry.defaultListModel);
+
+                    // **FIX: Store the "Přidat packet" tab info before removal**
+                    Component addPacketComponent = null;
+                    Component addPacketTabComponent = null;
+                    int addPacketIndex = -1;
+
+                    // Find and store the "Přidat packet" tab
+                    for (int idx = 0; idx < packetTabbedPane.getTabCount(); idx++) {
+                        if ("Přidat packet".equals(packetTabbedPane.getTitleAt(idx))) {
+                            addPacketComponent = packetTabbedPane.getComponentAt(idx);
+                            addPacketTabComponent = packetTabbedPane.getTabComponentAt(idx);
+                            addPacketIndex = idx;
+                            break;
+                        }
+                    }
+
                     // Remove all tabs except the "Přidat packet" placeholder
                     for (int idx = packetTabbedPane.getTabCount() - 1; idx >= 0; idx--) {
                         if (!"Přidat packet".equals(packetTabbedPane.getTitleAt(idx))) {
@@ -124,37 +211,63 @@ public class DockPanelBuilder {
                         }
                     }
 
-                    // Add a tab for each IPacket in the telegram's model
-                    for (int z = 0; z < telegramEntry.defaultListModel.getSize(); z++) {
-                        IPacket packet = telegramEntry.defaultListModel.get(z);
-                        ((Packet) packet).setjProgressBar(refreshButton); // link to refresh button
+                    // **FIX: Get packets in correct order (PH first)**
+                    java.util.List<IPacket> correctOrderPackets = getPacketsInCorrectOrder(telegramEntry.defaultListModel);
+
+                    // Add tabs for packets in correct order
+                    for (IPacket packet : correctOrderPackets) {
+                        ((Packet) packet).setjProgressBar(refreshButton);
 
                         Component packetComponent = packet.getPacketComponent();
-                        packetTabbedPane.addTab(packet.toString(), packetComponent);
 
-                        // Build a custom tab header with reorder arrows and a close button
-                        JPanel tabHeader = buildTabHeader(packetTabbedPane, telegramEntry.defaultListModel,
-                                packet, packetComponent, refreshButton,telegramEntry.defaultListModel.get(0));
+                        // **FIX: Always insert at the end (before "Přidat packet" tab)**
+                        int insertIndex = packetTabbedPane.getTabCount();
+                        if (insertIndex > 0) {
+                            // Check if last tab is "Přidat packet"
+                            String lastTitle = packetTabbedPane.getTitleAt(insertIndex - 1);
+                            if ("Přidat packet".equals(lastTitle)) {
+                                insertIndex = insertIndex - 1; // Insert before "Přidat packet"
+                            }
+                        }
 
-                        // Attach the custom header to the newly created tab
-                        int lastIndex = packetTabbedPane.getTabCount() - 1;
-                        packetTabbedPane.setTabComponentAt(lastIndex, tabHeader);
+                        packetTabbedPane.insertTab(packet.toString(), null, packetComponent, null, insertIndex);
 
+                        // Build a custom tab header (NO arrows - just close button)
+                        // **FIX: Always use the first PH packet from correct order list for reference**
+                        IPacket firstPH = correctOrderPackets.stream()
+                                .filter(p -> p instanceof PH)
+                                .findFirst()
+                                .orElse(correctOrderPackets.isEmpty() ? null : correctOrderPackets.get(0));
 
+                        JPanel tabHeader = buildModernTabHeader(packetTabbedPane, telegramEntry.defaultListModel,
+                                packet, packetComponent, refreshButton, firstPH);
 
+                        tabHeader.setOpaque(false);
+
+                        // Attach the custom header to the newly inserted tab
+                        packetTabbedPane.setTabComponentAt(insertIndex, tabHeader);
+                    }
+
+                    // **FIX: Ensure "Přidat packet" tab is still at the end and enabled properly**
+                    for (int idx = 0; idx < packetTabbedPane.getTabCount(); idx++) {
+                        if ("Přidat packet".equals(packetTabbedPane.getTitleAt(idx))) {
+                            packetTabbedPane.setEnabledAt(idx, false); // Keep it disabled for selection
+                            break;
+                        }
                     }
                 };
-
-
 
                 // 1.2) Initialize or refresh the internal packet tabs
                 updatePackets.run();
 
-                // 1.3) Create a placeholder tab for "Přidat packet"
-                packetTabbedPane.addTab("Přidat packet", new JPanel());
+                // 1.3) Create a placeholder tab for "Přidat packet" - ensure it's always last
+                if (packetTabbedPane.getTabCount() == 0 ||
+                        !"Přidat packet".equals(packetTabbedPane.getTitleAt(packetTabbedPane.getTabCount() - 1))) {
+                    packetTabbedPane.addTab("Přidat packet", new JPanel());
+                }
 
-                buildAddPacketTabHeader(packetTabbedPane, telegramEntry.defaultListModel,
-                        totalLengthProgressBar, refreshButton);
+                buildModernAddPacketTabHeader(packetTabbedPane, telegramEntry.defaultListModel,
+                        totalLengthProgressBar, refreshButton, updatePackets);
 
                 // 1.4) Finally, add this newly built packetTabbedPane to the main top-level tab
                 tabbedPane.addTab(
@@ -163,7 +276,7 @@ public class DockPanelBuilder {
                 );
 
                 // Build and attach a custom header for the entire telegram (tab).
-                JPanel telegramTabHeader = buildTelegramTabHeader(
+                JPanel telegramTabHeader = buildModernTelegramTabHeader(
                         tabbedPane, (DefaultListModel<TlgTemp>) listModel, telegramEntry
                 );
                 int lastIndex = tabbedPane.getTabCount() - 1;
@@ -173,22 +286,42 @@ public class DockPanelBuilder {
 
             // 2) Build the "Přidat nový telegram" tab
             tabbedPane.addTab("", new JPanel());
-            buildAddTelegramTabHeader(tabbedPane);
+            buildModernAddTelegramTabHeader(tabbedPane);
 
             // Disable the final "add new telegram" tab so it cannot be selected
             tabbedPane.setEnabledAt(tabbedPane.getTabCount() - 1, false);
         };
 
-
-
         // Attach rebuild logic to the telegram list model
         listModel.addListDataListener(new ListDataListener() {
             @Override
-            public void intervalAdded(ListDataEvent e)    { rebuildTabs.run(); }
+            public void intervalAdded(ListDataEvent e) {
+                // **FIX: Ensure PH packets are first in newly added telegrams**
+                SwingUtilities.invokeLater(() -> {
+                    for (int i = e.getIndex0(); i <= e.getIndex1(); i++) {
+                        if (i < listModel.getSize()) {
+                            TlgTemp telegram = listModel.getElementAt(i);
+                            ensurePHFirst(telegram.defaultListModel);
+                        }
+                    }
+                    rebuildTabs.run();
+                });
+            }
             @Override
-            public void intervalRemoved(ListDataEvent e)  { rebuildTabs.run(); }
+            public void intervalRemoved(ListDataEvent e) {
+                SwingUtilities.invokeLater(rebuildTabs);
+            }
             @Override
-            public void contentsChanged(ListDataEvent e)  { rebuildTabs.run(); }
+            public void contentsChanged(ListDataEvent e) {
+                // **FIX: Ensure PH packets are first when telegrams are modified**
+                SwingUtilities.invokeLater(() -> {
+                    for (int i = 0; i < listModel.getSize(); i++) {
+                        TlgTemp telegram = listModel.getElementAt(i);
+                        ensurePHFirst(telegram.defaultListModel);
+                    }
+                    rebuildTabs.run();
+                });
+            }
         });
 
         // Initial build
@@ -199,156 +332,245 @@ public class DockPanelBuilder {
     }
 
     /**
+     * Sets up the model updater for DnD operations
+     */
+    private void setupPacketModelUpdater(DnDTabbedPane packetTabbedPane, DefaultListModel<IPacket> packetModel) {
+        packetTabbedPane.putClientProperty("packetModel", packetModel);
+    }
+
+    /**
+     * Sets up packet type checking for the DnDTabbedPane
+     */
+    private void setupPacketTypeChecker(DnDTabbedPane tabbedPane) {
+        tabbedPane.setPacketTypeChecker(new DnDTabbedPane.PacketTypeChecker() {
+            @Override
+            public boolean isPH(JTabbedPane tabbedPane, int index) {
+                if (index < 0 || index >= tabbedPane.getTabCount()) return false;
+                String title = tabbedPane.getTitleAt(index);
+                return title != null && title.startsWith("PH");
+            }
+
+            @Override
+            public boolean isP0orP200(JTabbedPane tabbedPane, int index) {
+                if (index < 0 || index >= tabbedPane.getTabCount()) return false;
+                String title = tabbedPane.getTitleAt(index);
+                return title != null && (title.startsWith("P0_") || title.startsWith("P0 ") ||
+                        title.equals("P0") || title.startsWith("P200"));
+            }
+
+            @Override
+            public boolean isP255(JTabbedPane tabbedPane, int index) {
+                if (index < 0 || index >= tabbedPane.getTabCount()) return false;
+                String title = tabbedPane.getTitleAt(index);
+                return title != null && title.startsWith("P255");
+            }
+
+            @Override
+            public boolean isAddPacketTab(JTabbedPane tabbedPane, int index) {
+                if (index < 0 || index >= tabbedPane.getTabCount()) return false;
+                String title = tabbedPane.getTitleAt(index);
+                return title != null && title.equals("Přidat packet");
+            }
+        });
+    }
+
+    private JPanel buildModernTabHeader(JTabbedPane packetTabbedPane,
+                                        DefaultListModel<IPacket> packetModel,
+                                        IPacket packet,
+                                        Component packetComponent,
+                                        JButton refreshButton, IPacket iPacket) {
+
+        JPanel tabHeader = new JPanel(new MigLayout("insets 0", "[270!][20!]", "[20!]"));
+        tabHeader.setOpaque(false);
+        tabHeader.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+
+        // Build the center label(s) - NO ARROW BUTTONS
+        JPanel titlePanel = buildModernPacketTitlePanel(packet);
+        tabHeader.add(titlePanel);
+
+        // Right side: a modern close button
+        JButton closeButton = createModernCloseButton("✕");
+        closeButton.addActionListener(e -> {
+            packetModel.removeElement(packet);
+            packetTabbedPane.remove(packetComponent);
+            refreshButton.doClick();
+        });
+
+        // Disable the close button if PH or P255
+        if (packet instanceof PH || packet instanceof P255) {
+            closeButton.setEnabled(false);
+            closeButton.setVisible(false);
+        }
+
+        JPanel closePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        closePanel.setOpaque(false);
+        closePanel.add(closeButton);
+
+        tabHeader.add(closePanel);
+
+        // **FIX: Add proper mouse event dispatching for DnD support**
+        MouseAdapter dndMouseAdapter = new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (!SwingUtilities.isRightMouseButton(e)) {
+                    // Dispatch mouse event to the tabbedPane for DnD
+                    packetTabbedPane.dispatchEvent(SwingUtilities.convertMouseEvent(
+                            e.getComponent(), e, packetTabbedPane));
+
+                    // Select the tab
+                    packetTabbedPane.setSelectedIndex(packetTabbedPane.indexOfTabComponent(tabHeader));
+
+                    // Update graph panel
+                    if (graphPanel != null) {
+                        graphPanel.removeAll();
+                        graphPanel.add(packet.getGraphicalVisualization() == null ?
+                                new JPanel() : packet.getGraphicalVisualization());
+                        graphPanel.revalidate();
+                        graphPanel.repaint();
+                    }
+                }
+            }
+
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                // Dispatch drag events to the tabbedPane for DnD
+                packetTabbedPane.dispatchEvent(SwingUtilities.convertMouseEvent(
+                        e.getComponent(), e, packetTabbedPane));
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                Color hoverColor = UIManager.getColor("Button.hoverBackground");
+                if (hoverColor == null) {
+                    hoverColor = UIManager.getColor("List.selectionBackground");
+                }
+                if (hoverColor != null) {
+                    tabHeader.setBackground(hoverColor);
+                    tabHeader.setOpaque(false);
+                }
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                tabHeader.setOpaque(false);
+            }
+        };
+
+        // Add mouse listeners to the tab header for DnD support
+        tabHeader.addMouseListener(dndMouseAdapter);
+        tabHeader.addMouseMotionListener(dndMouseAdapter);
+
+        // Also add to the title panel to ensure events are captured
+        titlePanel.addMouseListener(dndMouseAdapter);
+        titlePanel.addMouseMotionListener(dndMouseAdapter);
+
+        return tabHeader;
+    }
+    /**
      * Constructs the "Logy" dock panel with a text pane for log output
      * and a combo box to filter the minimum log level.
-     *
-     * @return a {@link SimplePanel} containing the logging area.
      */
     public SimplePanel buildTelegDock() {
         SimplePanel telegDock = new SimplePanel("Logy", "three", null, new ArrayList<>());
 
-
-        // Where you previously created and set up your JTextPane:
         JScrollPane logScrollPane = VirtualLogListAppender.createLogListComponent();
 
-
-// Set up the level combo box (same as before)
-        JComboBox<Level> levelCombo = new JComboBox<>(new Level[]{
-                Level.OFF, Level.FATAL, Level.ERROR, Level.WARN,
-                Level.INFO, Level.DEBUG, Level.TRACE, Level.ALL
-        });
-        levelCombo.setSelectedItem(Level.INFO); // Default level
-        VirtualLogListAppender.setLevelCombo(levelCombo);
+        // Modern styling for scroll pane
+        logScrollPane.setBorder(createModernBorder());
+        logScrollPane.setBackground(UIManager.getColor("ScrollPane.background"));
 
 
-        // Listen for changes in the combo box and update visible levels
-        levelCombo.addActionListener(e -> {
-            Level selectedLevel = (Level) levelCombo.getSelectedItem();
-            if (selectedLevel == null) return;
-            Set<Level> newLevels = new HashSet<>();
+        // A modern panel to hold the label + combo
 
-            for (Level levelOption : new Level[]{
-                    Level.ALL, Level.TRACE, Level.DEBUG, Level.INFO,
-                    Level.WARN, Level.ERROR, Level.FATAL, Level.OFF
-            }) {
-                if (levelOption.intLevel() >= selectedLevel.intLevel()) {
-                    newLevels.add(levelOption);
-                }
-            }
-            VirtualLogListAppender.setVisibleLevels(newLevels);
-        });
 
-        // A small panel to hold the label + combo
-        JPanel topPanel = new JPanel();
-        topPanel.add(levelCombo);
+
+
 
         // Assemble the final log panel
-        JPanel logPanel = new JPanel(new BorderLayout());
-        logPanel.add(topPanel, BorderLayout.NORTH);
+        JPanel logPanel = new JPanel(new BorderLayout(0, 8));
+        logPanel.setBackground(UIManager.getColor("Panel.background"));
+        logPanel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
         logPanel.add(logScrollPane, BorderLayout.CENTER);
-
 
         telegDock.add(logPanel);
         return telegDock;
     }
 
     /**
-     * Builds a "Grafické zobrazení" dock (currently empty).
-     *
-     * @return the constructed dock panel for future UI features.
+     * Builds a "Grafické zobrazení" dock.
      */
-    public SimplePanel buildGrafDock()
-    {
-
-        SimplePanel graphDock= new SimplePanel("Grafické zobrazení", "four", null, new ArrayList<>());
+    public SimplePanel buildGrafDock() {
+        SimplePanel graphDock = new SimplePanel("Grafické zobrazení", "four", null, new ArrayList<>());
         graphPanel = new JPanel();
         graphPanel.setLayout(new BoxLayout(graphPanel, BoxLayout.Y_AXIS));
+        graphPanel.setBackground(UIManager.getColor("Panel.background"));
+        graphPanel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
         graphDock.add(graphPanel);
-
 
         return graphDock;
     }
 
     /**
-     * Builds a "Dekatické vyjádření" dock (currently empty).
-     *
-     * @return an empty dock panel for future expansions.
+     * Builds a "Dekatické vyjádření" dock.
      */
     public SimplePanel buildDecDock() {
+        JPanel diffPanel = new JPanel(new MigLayout("fill, insets 16", "[grow]", "[grow]"));
+        diffPanel.setBackground(UIManager.getColor("Panel.background"));
 
-        JPanel diffPanel = new JPanel(new MigLayout("fill", "[grow]", "[grow]"));
+        diffPanel.add(new EditorFrame((DefaultListModel<TlgTemp>) telegramList.getModel(), files).getContentPanel(), "grow");
 
-        diffPanel.add(new EditorFrame((DefaultListModel<TlgTemp>) telegramList.getModel(),files).getContentPanel(), "grow");
-        
         SimplePanel binDock = new SimplePanel("Input File", "seven", null, new ArrayList<>());
-
         binDock.add(diffPanel);
 
         return binDock;
     }
 
     /**
-     * Builds an "Input file" or "BinDock" panel (currently minimal example).
-     *
-     * @return a {@link SimplePanel} for binary file inputs or similar data.
+     * Builds an "Input file" or "BinDock" panel.
      */
     public SimplePanel buildBinDock() {
-
-
-        JPanel diffPanel = new JPanel(new MigLayout("fill", "[200!][grow]", "[grow][]"));
+        JPanel diffPanel = new JPanel(new MigLayout("fill, insets 16", "[220!][grow]", "[grow][]"));
+        diffPanel.setBackground(UIManager.getColor("Panel.background"));
 
         JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane.putClientProperty("JTabbedPane.tabType", "card");
 
         JScrollPane listScrollPane = new JScrollPane(telegramList);
         JScrollPane tableScrollPane = new JScrollPane(tabbedPane);
-        JButton jButton = new JButton("Porovnat");
+        JButton jButton = createModernButton("🔄 Porovnat", "accent");
 
-        // List takes all extra vertical space (pushy, growy)
+        // Style scroll panes
+        listScrollPane.setBorder(createModernBorder());
+        tableScrollPane.setBorder(createModernBorder());
+
         diffPanel.add(listScrollPane, "cell 0 0, grow, pushy");
-        // Button takes minimal height, no extra vertical space
-        diffPanel.add(jButton, "cell 0 1, growx");
-        // Table spans both rows vertically on the right
+        diffPanel.add(jButton, "cell 0 1, growx, gaptop 8");
         diffPanel.add(tableScrollPane, "cell 1 0 1 2, grow");
 
         jButton.addActionListener(e -> {
-
-
             String baseString = "";
-
             tabbedPane.removeAll();
 
-            for (int i =0; i < telegramList.getSelectedValue().defaultListModel.getSize(); i++)
-            {
+            for (int i = 0; i < telegramList.getSelectedValue().defaultListModel.getSize(); i++) {
                 IPacket packet = telegramList.getSelectedValue().defaultListModel.get(i);
-                baseString += packet.getSimpleView()+"\n";
-
+                baseString += packet.getSimpleView() + "\n";
             }
 
-
-            for (int i =0; i < telegramList.getModel().getSize(); i++)
-            {
-                if (i==telegramList.getSelectedIndex())
+            for (int i = 0; i < telegramList.getModel().getSize(); i++) {
+                if (i == telegramList.getSelectedIndex())
                     continue;
 
-                TlgTemp packet = ((DefaultListModel<TlgTemp>)telegramList.getModel()).get(i);
+                TlgTemp packet = ((DefaultListModel<TlgTemp>) telegramList.getModel()).get(i);
                 String compareString = "";
 
-                for (int ii =0; ii < packet.defaultListModel.getSize(); ii++)
-                {
+                for (int ii = 0; ii < packet.defaultListModel.getSize(); ii++) {
                     IPacket packet2 = packet.defaultListModel.get(ii);
-                    compareString += packet2.getSimpleView() +"\n";
+                    compareString += packet2.getSimpleView() + "\n";
                 }
 
-
-                tabbedPane.addTab(packet.toString(),createHtmlDiffTable(baseString,compareString));
-
+                tabbedPane.addTab(packet.toString(), createHtmlDiffTable(baseString, compareString));
             }
-
-
-
         });
-
-
 
         SimplePanel binDock = new SimplePanel("Porovnání", "AAAABC", null, new ArrayList<>());
         binDock.add(diffPanel);
@@ -358,9 +580,6 @@ public class DockPanelBuilder {
 
     /**
      * Builds a "Soubory" dock containing a file navigation component.
-     * This allows the user to open or manage saved telegram files.
-     *
-     * @return the constructed "Soubory" dock panel.
      */
     public SimplePanel buildMapDock() {
         files = new FileManager();
@@ -369,243 +588,223 @@ public class DockPanelBuilder {
         ArrayList<JMenu> menuList = new ArrayList<>();
         SimplePanel mapDock = new SimplePanel("Soubory", "eight", null, menuList);
 
-        mapDock.add(fileTreeComponent);
+        // Wrap in a panel with modern styling
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(UIManager.getColor("Panel.background"));
+        wrapper.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        wrapper.add(fileTreeComponent, BorderLayout.CENTER);
+
+        mapDock.add(wrapper);
         return mapDock;
     }
 
     //////////////////////////////////////////////////////////////////////////////
-    //                           HELPER METHODS
+    //                           MODERN STYLING METHODS
     //////////////////////////////////////////////////////////////////////////////
 
-    /**
-     * Moves an existing tab from one index to another in both the {@code JTabbedPane}
-     * and the associated {@code DefaultListModel}.
-     *
-     * @param tabbedPane   the {@link JTabbedPane} containing the tabs
-     * @param packetModel  the {@link DefaultListModel} holding IPacket objects
-     * @param fromIndex    the original index of the tab
-     * @param toIndex      the new index of the tab
-     */
-    private void moveTab(JTabbedPane tabbedPane, DefaultListModel<IPacket> packetModel,
-                         int fromIndex, int toIndex) {
+    private JButton createModernButton(String text, String colorType) {
+        JButton button = new JButton(text);
 
-        // 1) Reorder the JTabbedPane
-        Component comp   = tabbedPane.getComponentAt(fromIndex);
-        Component header = tabbedPane.getTabComponentAt(fromIndex);
-        String title     = tabbedPane.getTitleAt(fromIndex);
-        Icon icon        = tabbedPane.getIconAt(fromIndex);
-        String tooltip   = tabbedPane.getToolTipTextAt(fromIndex);
-        boolean enabled  = tabbedPane.isEnabledAt(fromIndex);
-
-        tabbedPane.removeTabAt(fromIndex);
-        tabbedPane.insertTab(title, icon, comp, tooltip, toIndex);
-        tabbedPane.setTabComponentAt(toIndex, header);
-        tabbedPane.setEnabledAt(toIndex, enabled);
-        tabbedPane.setSelectedIndex(toIndex);
-
-        // 2) Reorder the DefaultListModel if indexes are valid
-        if (fromIndex >= 0 && fromIndex < packetModel.size()
-                && toIndex >= 0 && toIndex < packetModel.size()) {
-            IPacket movingItem = packetModel.get(fromIndex);
-            packetModel.removeElementAt(fromIndex);
-            packetModel.add(toIndex, movingItem);
-        }
-    }
-
-    /**
-     * Builds a custom tab header for a single {@link IPacket} tab. This header
-     * includes up/down reorder arrows and a close button to remove the packet.
-     *
-     * @param packetTabbedPane the {@link JTabbedPane} for the packets
-     * @param packetModel      the model storing the {@link IPacket}s
-     * @param packet           the current {@link IPacket} this tab represents
-     * @param packetComponent  the UI component for this packet
-     * @param refreshButton    a button that triggers recalculation of the packet lengths
-     * @param iPacket
-     * @return a {@link JPanel} to be set as the custom tab header
-     */
-    private JPanel buildTabHeader(JTabbedPane packetTabbedPane,
-                                  DefaultListModel<IPacket> packetModel,
-                                  IPacket packet,
-                                  Component packetComponent,
-                                  JButton refreshButton, IPacket iPacket)
-    {
-
-        int version = 0;
-
-        if (iPacket instanceof PH)
-        {
-            version = (((PH) iPacket).getM_version().getDecValue());
-
+        // Use system colors based on type
+        Color backgroundColor, foregroundColor;
+        switch (colorType) {
+            case "accent":
+                backgroundColor = UIManager.getColor("Component.accentColor");
+                if (backgroundColor == null) backgroundColor = UIManager.getColor("Button.default.background");
+                foregroundColor = UIManager.getColor("Button.default.foreground");
+                if (foregroundColor == null) foregroundColor = Color.BLACK;
+                break;
+            case "success":
+                backgroundColor = UIManager.getColor("Actions.Green");
+                if (backgroundColor == null) backgroundColor = UIManager.getColor("Component.accentColor");
+                foregroundColor = Color.BLACK;
+                break;
+            case "warning":
+                backgroundColor = UIManager.getColor("Actions.Yellow");
+                if (backgroundColor == null) backgroundColor = UIManager.getColor("Component.warningFocusColor");
+                foregroundColor = Color.BLACK;
+                break;
+            case "danger":
+                backgroundColor = UIManager.getColor("Actions.Red");
+                if (backgroundColor == null) backgroundColor = UIManager.getColor("Component.errorFocusColor");
+                foregroundColor = Color.BLACK;
+                break;
+            default:
+                backgroundColor = UIManager.getColor("Button.background");
+                foregroundColor = UIManager.getColor("Button.foreground");
         }
 
+        button.setBackground(backgroundColor);
+        button.setForeground(foregroundColor);
+        button.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
+        button.setFocusPainted(false);
+        button.setFont(button.getFont().deriveFont(Font.BOLD, 13f));
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        JPanel tabHeader = new JPanel(new BorderLayout(5, 0));
-        tabHeader.setOpaque(false);
-
-
-
-        // Create reorder arrow panel
-        JPanel arrowPanel = new JPanel(new BorderLayout());
-        arrowPanel.setOpaque(false);
-
-        JButton upButton = createArrowButton("⋀");
-        JButton downButton = createArrowButton("⋁");
-
-        // Move tab up
-        upButton.addActionListener(e -> {
-            int index = packetTabbedPane.indexOfComponent(packetComponent);
-            if (index > 0) {
-                // If the next item is P0 or P200 or PH, do not move
-                if (packetModel.get(index - 1) instanceof P0
-                        || packetModel.get(index - 1) instanceof P200
-                        || packetModel.get(index - 1) instanceof PH) {
-                    return;
-                }
-                moveTab(packetTabbedPane, packetModel, index, index - 1);
-            }
-        });
-
-        // Move tab down
-        downButton.addActionListener(e -> {
-            int index = packetTabbedPane.indexOfComponent(packetComponent);
-            if (index < packetTabbedPane.getTabCount() - 1) {
-                if (packetModel.get(index + 1) instanceof P255) {
-                    return;
-                }
-                moveTab(packetTabbedPane, packetModel, index, index + 1);
-            }
-        });
-
-        arrowPanel.add(upButton, BorderLayout.NORTH);
-        arrowPanel.add(downButton, BorderLayout.WEST);
-        tabHeader.add(arrowPanel, BorderLayout.WEST);
-
-        // Build the center label(s)
-        JPanel titlePanel = buildPacketTitlePanel(packet);
-
-        tabHeader.add(titlePanel, BorderLayout.CENTER);
-
-        // Right side: a close button
-        JButton closeButton = createCloseButton("×");
-        closeButton.setFont(closeButton.getFont().deriveFont(18f));
-        closeButton.addActionListener(e -> {
-            // Remove packet from the model
-            packetModel.removeElement(packet);
-            packetTabbedPane.remove(packetComponent);
-            // Force update of the parent's progress bar if desired
-            refreshButton.doClick();
-        });
-
-        // Disable the close button if PH or P255
-        if (packet instanceof PH || packet instanceof P255) {
-            closeButton.setEnabled(false);
-            closeButton.setText(" ");
-        }
-
-        // Disable arrow buttons if PH, P0, P200, P255
-        if (packet instanceof PH || packet instanceof P200
-                || packet instanceof P0 || packet instanceof P255) {
-            upButton.setEnabled(false);
-            downButton.setEnabled(false);
-            upButton.setText("");
-            downButton.setText("");
-        }
-
-        JPanel closePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        closePanel.setOpaque(false);
-        closePanel.add(closeButton);
-
-        tabHeader.add(closePanel, BorderLayout.EAST);
-
-        // Listener for selecting the tab on mouse press anywhere in the header
-        tabHeader.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                super.mousePressed(e);
-                packetTabbedPane.setSelectedIndex(packetTabbedPane.indexOfTabComponent(tabHeader));
-
-                graphPanel.removeAll();
-
-                graphPanel.add(packet.getGraphicalVisualization()==null?new JPanel():packet.getGraphicalVisualization());
-            }
-        });
-
-        return tabHeader;
-    }
-
-    /**
-     * Creates a small arrow button with minimal styling for up/down moves.
-     *
-     * @param text the text (arrow character) of the button
-     * @return a {@link JButton} with hover and style settings
-     */
-    private JButton createArrowButton(String text) {
-        JButton arrowButton = new JButton(text);
-        arrowButton.setOpaque(false);
-        arrowButton.setContentAreaFilled(false);
-        arrowButton.setBorderPainted(false);
-        arrowButton.setFocusable(false);
-        arrowButton.setMinimumSize(new Dimension(30, 15));
-        arrowButton.setPreferredSize(new Dimension(30, 15));
-        arrowButton.setMaximumSize(new Dimension(30, 15));
-
-        arrowButton.addMouseListener(new MouseAdapter() {
+        // Hover effects using system colors
+        Color finalBackgroundColor = backgroundColor;
+        button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                arrowButton.setForeground(new JTextArea().getSelectedTextColor());
+                Color hoverColor = UIManager.getColor("Button.hoverBackground");
+                if (hoverColor == null) {
+                    // Fallback: darken the current color
+                    hoverColor = finalBackgroundColor.darker();
+                }
+                button.setBackground(hoverColor);
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                arrowButton.setForeground(new JButton().getForeground());
+                button.setBackground(finalBackgroundColor);
             }
         });
-        return arrowButton;
+
+        return button;
+    }
+
+    private JProgressBar createModernProgressBar() {
+        JProgressBar progressBar = new JProgressBar();
+        progressBar.setFont(UIManager.getFont("ProgressBar.font"));
+        progressBar.setFont(progressBar.getFont().deriveFont(20f));
+        if (progressBar.getFont() == null) {
+            progressBar.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 20));
+        }
+        progressBar.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        progressBar.setForeground(UIManager.getColor("ProgressBar.foreground"));
+        progressBar.setBackground(UIManager.getColor("ProgressBar.background"));
+        return progressBar;
+    }
+
+    private void styleModernComboBox(JComboBox<?> comboBox) {
+        comboBox.setFont(UIManager.getFont("ComboBox.font"));
+        if (comboBox.getFont() == null) {
+            comboBox.setFont(comboBox.getFont().deriveFont(13f));
+        }
+        comboBox.setBorder(BorderFactory.createCompoundBorder(
+                createModernBorder(),
+                BorderFactory.createEmptyBorder(2, 2, 2, 22)
+        ));
+        comboBox.setBackground(UIManager.getColor("ComboBox.background"));
+        comboBox.setForeground(UIManager.getColor("ComboBox.foreground"));
+    }
+
+    private AbstractBorder createModernBorder() {
+        return new AbstractBorder() {
+            @Override
+            public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                Color borderColor = UIManager.getColor("Component.borderColor");
+                if (borderColor == null) {
+                    borderColor = UIManager.getColor("Panel.border");
+                }
+                if (borderColor == null) {
+                    borderColor = new Color(200, 200, 200);
+                }
+
+                g2d.setColor(borderColor);
+                g2d.setStroke(new BasicStroke(1f));
+                g2d.drawRoundRect(x, y, width - 1, height - 1, 8, 8);
+                g2d.dispose();
+            }
+
+            @Override
+            public Insets getBorderInsets(Component c) {
+                return new Insets(1, 1, 1, 1);
+            }
+        };
+    }
+
+    private AbstractBorder createModernCardBorder() {
+        return new AbstractBorder() {
+            @Override
+            public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // Drop shadow effect using system colors
+                Color shadowColor = UIManager.getColor("Component.shadowColor");
+                if (shadowColor == null) {
+                    shadowColor = new Color(0, 0, 0, 20);
+                }
+                g2d.setColor(shadowColor);
+                g2d.fillRoundRect(x + 2, y + 2, width - 2, height - 2, 12, 12);
+
+                // Main border using system colors
+                Color borderColor = UIManager.getColor("Component.borderColor");
+                if (borderColor == null) {
+                    borderColor = UIManager.getColor("Panel.border");
+                }
+                if (borderColor == null) {
+                    borderColor = new Color(200, 200, 200);
+                }
+
+                g2d.setColor(borderColor);
+                g2d.setStroke(new BasicStroke(1f));
+                g2d.drawRoundRect(x, y, width - 3, height - 3, 12, 12);
+                g2d.dispose();
+            }
+
+            @Override
+            public Insets getBorderInsets(Component c) {
+                return new Insets(8, 8, 10, 10);
+            }
+        };
     }
 
     /**
-     * Creates a close button with minimal styling to remove a tab or packet.
-     *
-     * @param text the label text (usually "x")
-     * @return a {@link JButton} styled for closing
+     * Creates a modern close button with better styling using system colors.
      */
-    private JButton createCloseButton(String text) {
+    private JButton createModernCloseButton(String text) {
         JButton closeButton = new JButton(text);
         closeButton.setOpaque(false);
         closeButton.setContentAreaFilled(false);
         closeButton.setBorderPainted(false);
         closeButton.setFocusable(false);
+        closeButton.setFont(closeButton.getFont().deriveFont(Font.BOLD, 14f));
+        closeButton.setPreferredSize(new Dimension(24, 24));
+        closeButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        closeButton.setForeground(UIManager.getColor("Button.foreground"));
 
         closeButton.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                closeButton.setForeground(new JTextArea().getSelectedTextColor());
+                Color errorColor = UIManager.getColor("Actions.Red");
+                if (errorColor == null) {
+                    errorColor = UIManager.getColor("Component.errorFocusColor");
+                }
+                if (errorColor == null) {
+                    errorColor = Color.RED.darker();
+                }
+                closeButton.setForeground(errorColor);
+
+                // Create a lighter version of the error color for background
+                Color hoverBg = new Color(errorColor.getRed(), errorColor.getGreen(), errorColor.getBlue(), 30);
+                closeButton.setContentAreaFilled(true);
+                closeButton.setBackground(hoverBg);
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                closeButton.setForeground(new JButton().getForeground());
+                closeButton.setForeground(UIManager.getColor("Button.foreground"));
+                closeButton.setContentAreaFilled(false);
             }
         });
         return closeButton;
     }
 
     /**
-     * Builds a panel that displays a {@link IPacket}'s title in a monospaced format.
-     *
-     * @param packet the packet whose title needs processing
-     * @return a {@link JPanel} suitable for placing in a tab header
+     * Builds a modern panel that displays a {@link IPacket}'s title using system fonts.
      */
-    private JPanel buildPacketTitlePanel(IPacket packet) {
-        // Parse the packet's text for display
+    private JPanel buildModernPacketTitlePanel(IPacket packet) {
         String rawTitle = packet.toString().replace("</html>", "");
         String[] parts = rawTitle.split(":");
 
-        // Create section labels
-        JLabel leftLabel   = new JLabel(parts.length > 0 ? parts[0].trim() : "");
+        JLabel leftLabel = new JLabel(parts.length > 0 ? parts[0].trim() : "");
         JLabel centerLabel = new JLabel(parts.length > 1 ? parts[1] : "");
-        JLabel rightLabel  = new JLabel(parts.length > 2 ? parts[2].trim() : "");
+        JLabel rightLabel = new JLabel(parts.length > 2 ? parts[2].trim() : "");
 
         // Remove underscores in left label
         int underscoreIndex = leftLabel.getText().indexOf('_');
@@ -613,38 +812,45 @@ public class DockPanelBuilder {
             leftLabel.setText(leftLabel.getText().substring(0, underscoreIndex));
         }
 
-        // Add vertical bars
-        leftLabel.setText(StringHelper.padLeft(leftLabel.getText(),4, ' ') + "");
-        rightLabel.setText("" + rightLabel.getText());
+        leftLabel.setText(StringHelper.padLeft(leftLabel.getText(), 4, ' '));
 
-        // Align center and right labels
+        leftLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+
+        leftLabel.setIcon(packet.getIcon());
+
         centerLabel.setHorizontalAlignment(SwingConstants.CENTER);
         rightLabel.setHorizontalAlignment(SwingConstants.RIGHT);
 
-        // Put them in a small border layout
-        JPanel titlePanel = new JPanel(new BorderLayout());
+        JPanel titlePanel = new JPanel(new BorderLayout(4, 0));
         titlePanel.setOpaque(false);
-        leftLabel.setOpaque(false);
-        centerLabel.setOpaque(false);
-        rightLabel.setOpaque(false);
 
         titlePanel.add(leftLabel, BorderLayout.WEST);
         titlePanel.add(centerLabel, BorderLayout.CENTER);
         titlePanel.add(rightLabel, BorderLayout.EAST);
 
-        // Set sizing
-        titlePanel.setMinimumSize(new Dimension(250, 15));
-        titlePanel.setPreferredSize(new Dimension(250, 15));
-        titlePanel.setMaximumSize(new Dimension(250, 15));
+        titlePanel.setPreferredSize(new Dimension(280, 20));
 
-        // Monospaced font
-        Font monoFont = new Font("Monospaced", Font.PLAIN, 12);
+        // Use system fonts
+        Font defaultFont = UIManager.getFont("Label.font");
+        Font monoFont = UIManager.getFont("TextArea.font"); // Usually monospaced
+        if (monoFont == null) {
+            monoFont = new Font(Font.MONOSPACED, Font.PLAIN, 11);
+        }
+        if (defaultFont == null) {
+            defaultFont = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+        }
+
         leftLabel.setFont(monoFont);
-       // centerLabel.setFont(monoFont);
         rightLabel.setFont(monoFont);
+        centerLabel.setFont(defaultFont);
+
+        // Use system colors
+        Color foregroundColor = UIManager.getColor("Label.foreground");
+        leftLabel.setForeground(foregroundColor);
+        centerLabel.setForeground(foregroundColor);
+        rightLabel.setForeground(foregroundColor);
 
         if (packet instanceof PH phPacket) {
-            // Link the middle label to the PH packet if needed
             phPacket.setjLabel1(centerLabel);
         }
 
@@ -652,82 +858,39 @@ public class DockPanelBuilder {
     }
 
     /**
-     * Builds the custom tab header that appears in the "Přidat packet" tab,
-     * containing a combo box to select new packet types, a progress bar, and
-     * a button to insert the chosen packet into the telegram.
-     *
-     * @param packetTabbedPane   the parent {@link JTabbedPane} for the IPackets
-     * @param packetModel        the model containing {@link IPacket} objects
-     * @param totalLengthBar     a progress bar indicating total packet length
-     * @param refreshButton      a button triggering re-check of total lengths
+     * Builds the modern custom tab header for the "Přidat packet" tab using system colors.
      */
-    private void buildAddPacketTabHeader(JTabbedPane packetTabbedPane,
-                                         DefaultListModel<IPacket> packetModel,
-                                         JProgressBar totalLengthBar,
-                                         JButton refreshButton) {
+    private void buildModernAddPacketTabHeader(JTabbedPane packetTabbedPane,
+                                               DefaultListModel<IPacket> packetModel,
+                                               JProgressBar totalLengthBar,
+                                               JButton refreshButton,
+                                               Runnable updatePackets) {
         int lastIndex = packetTabbedPane.getTabCount() - 1;
 
-        // Container for everything in the "Přidat packet" tab header
-        JPanel addPacketHeader = new JPanel(new BorderLayout(5, 0));
-        addPacketHeader.setOpaque(false);
-
-        addPacketHeader.setBorder(BorderFactory.createEtchedBorder());
-
-// With this custom border implementation:
-        addPacketHeader.setBorder(new AbstractBorder() {
-            @Override
-            public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
-                Graphics2D g2d = (Graphics2D) g.create();
-
-                // Use the component's background color to determine border colors
-                Color background = c.getBackground();
-                Color highlight = background.brighter();
-                Color shadow = background.darker();
-
-                // Draw top etched line
-                g2d.setColor(shadow);
-                g2d.drawLine(x, y, x + width - 1, y);
-                g2d.setColor(highlight);
-                g2d.drawLine(x, y + 1, x + width - 1, y + 1);
-
-                // Draw right etched line
-                g2d.setColor(shadow);
-                g2d.drawLine(x + width - 1, y, x + width - 1, y + height - 1);
-                g2d.setColor(highlight);
-                g2d.drawLine(x + width - 2, y, x + width - 2, y + height - 1);
-
-                g2d.dispose();
-            }
-
-            @Override
-            public Insets getBorderInsets(Component c) {
-                // Return zero insets to avoid adding extra space
-                return new Insets(5, 5, 5, 5);
-            }
-
-            @Override
-            public Insets getBorderInsets(Component c, Insets insets) {
-                insets.top = 5;
-                insets.left = 5;
-                insets.bottom = 5;
-                insets.right = 5;
-                return insets;
-            }
-        });
+        JPanel addPacketHeader = new JPanel(new BorderLayout(12, 0));
+        addPacketHeader.setOpaque(true);
+        addPacketHeader.setBackground(UIManager.getColor("Panel.background"));
+        addPacketHeader.setBorder(createModernCardBorder());
 
         // 1) Combo box for selecting which packet to add
         JComboBox<Packet> comboBox = new JComboBox<>();
         GUIHelper.initNewPlist(comboBox);
+        styleModernComboBox(comboBox);
 
-        // Custom cell renderer for the combo box
+        // Custom cell renderer for the combo box using system colors
         comboBox.setRenderer((list, value, index, isSelected, cellHasFocus) -> {
-            // Build a panel with a single label
             JPanel panel = new JPanel(new BorderLayout());
             panel.setOpaque(true);
 
             JLabel centerLabel = new JLabel();
             centerLabel.setHorizontalAlignment(SwingConstants.CENTER);
-            centerLabel.setFont(new Font("Monospaced", Font.PLAIN, 14));
+
+            Font monoFont = UIManager.getFont("TextArea.font");
+            if (monoFont == null) {
+                monoFont = new Font(Font.MONOSPACED, Font.PLAIN, 13);
+            }
+            centerLabel.setFont(monoFont);
+            centerLabel.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
 
             if (value != null) {
                 String rawValue = value.toString().replace("</html>", "");
@@ -739,79 +902,92 @@ public class DockPanelBuilder {
                 centerLabel.setText("");
             }
 
-            Color bg = isSelected ? UIManager.getColor("List.selectionBackground") :
+            Color bg = isSelected ?
+                    UIManager.getColor("List.selectionBackground") :
                     UIManager.getColor("List.background");
-            Color fg = isSelected ? UIManager.getColor("List.selectionForeground") :
+            Color fg = isSelected ?
+                    UIManager.getColor("List.selectionForeground") :
                     UIManager.getColor("List.foreground");
 
             panel.setBackground(bg);
             centerLabel.setForeground(fg);
-
             panel.add(centerLabel, BorderLayout.CENTER);
             return panel;
         });
 
-        // 2) A label and combo
-        addPacketHeader.add(new JLabel("Přidat Packet: "), BorderLayout.WEST);
+        // 2) Modern label and combo
+        JLabel addLabel = new JLabel("Přidat Packet:");
+        addLabel.setFont(addLabel.getFont().deriveFont(Font.BOLD, 14f));
+        addLabel.setForeground(UIManager.getColor("Label.foreground"));
+
+        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        leftPanel.setOpaque(false);
+        leftPanel.add(addLabel);
+
+        addPacketHeader.add(leftPanel, BorderLayout.WEST);
         addPacketHeader.add(comboBox, BorderLayout.CENTER);
 
-        // 3) Button to add the selected packet
-        JButton plusButton = new JButton("+");
+        // 3) Modern add button
+        JButton plusButton = createModernButton("＋", "success");
+        plusButton.setPreferredSize(new Dimension(40, 32));
 
-        plusButton.setFocusable(false);
         plusButton.addActionListener(e -> {
             IPacket selected = (IPacket) comboBox.getSelectedItem();
-            // Disallow adding PH
             if (selected instanceof PH) return;
 
-            int position = 1;
-            // If first index is P0 or P200, skip second index
-            if (packetModel.get(1) instanceof P0 || packetModel.get(1) instanceof P200) {
-                position = 2;
+            // **FIX: Add after PH packets but before other packets**
+            int position = 0;
+            for (int i = 0; i < packetModel.getSize(); i++) {
+                if (!(packetModel.get(i) instanceof PH)) {
+                    position = i;
+                    break;
+                }
+                position = i + 1; // If all are PH, add at the end
             }
 
             packetModel.add(position, selected);
-            // Rebuild the internal packet tabs
-            rebuildPacketTabs(packetTabbedPane, packetModel);
 
-            // Reorder the "Přidat packet" tab to the end
-            moveAddPacketTabToEnd(packetTabbedPane);
+            // **FIX: Ensure PH packets are still first after adding**
+            ensurePHFirst(packetModel);
 
-            // Trigger refresh
+            updatePackets.run(); // This rebuilds the tabs automatically!
             refreshButton.doClick();
         });
 
-        // 4) Put plus button to the right
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         rightPanel.setOpaque(false);
         rightPanel.add(plusButton);
         addPacketHeader.add(rightPanel, BorderLayout.EAST);
 
-        // 5) Add layout for bottom portion: progress bar, encode buttons, etc.
-        JPanel addPacketContainer = new JPanel(new MigLayout("", "[]5[]", "[]5[]"));
-        addPacketContainer.setOpaque(false);
+        // 4) Container with modern layout
+        JPanel addPacketContainer = new JPanel(new MigLayout("fillx, insets 1", "[]", "[]8[]8[]8[]8[]"));
+        addPacketContainer.setOpaque(true);
+        addPacketContainer.setBackground(UIManager.getColor("Panel.background"));
 
-        addPacketContainer.add(addPacketHeader, "newline");
+        addPacketContainer.add(addPacketHeader, "growx, wrap");
 
-        // Add totalLengthBar + tie it to refreshButton
-        addPacketContainer.add(totalLengthBar, "newline,growx");
-        totalLengthBar.setFont(new Font("Monospaced", Font.BOLD, 14));
+        // Add modern progress bar
+        addPacketContainer.add(totalLengthBar, "growx, wrap");
 
         refreshButton.addActionListener(e -> {
-            // Recompute total bits
             int totalBits = 0;
             for (int i = 0; i < packetModel.getSize(); i++) {
                 totalBits += packetModel.getElementAt(i).getBinData().length();
             }
 
-            // 210 for short, 830 for long
             String type = (totalBits <= 210) ? "Krátký" : "Dlouhý";
             totalLengthBar.setMaximum((totalBits <= 210) ? 210 : 830);
 
             if (totalBits > 830) {
-                totalLengthBar.setString("ERROR ( " + totalBits + " )");
+                totalLengthBar.setString("❌ ERROR ( " + totalBits + " )");
+                Color errorColor = UIManager.getColor("Actions.Red");
+                if (errorColor == null) errorColor = Color.RED;
+                totalLengthBar.setForeground(errorColor);
             } else {
-                totalLengthBar.setString("OK ( " + totalBits + " ) [" + type + "]");
+                totalLengthBar.setString("✅ OK ( " + totalBits + " ) [" + type + "]");
+                Color successColor = UIManager.getColor("Actions.Green");
+                if (successColor == null) successColor = Color.GREEN.darker();
+                totalLengthBar.setForeground(successColor);
             }
 
             totalLengthBar.setStringPainted(true);
@@ -819,216 +995,54 @@ public class DockPanelBuilder {
         });
         refreshButton.doClick();
 
-        // 7) "Encode" button and progress bar
-        JButton encodeBtn = new JButton("Zakódovat jeden telegram");
-        JButton encodeBtn2 = new JButton("Zakódovat a vytvořit BG (2x B)");
-        addPacketContainer.add(encodeBtn2, "newline,growx");
-        addPacketContainer.add(encodeBtn, "newline,growx");
+        // 7) Modern encode buttons
+        JButton encodeBtn = createModernButton("🔒 Zakódovat jeden telegram", "accent");
+        JButton encodeBtn2 = createModernButton("🔄 Zakódovat a vytvořit BG (2x B)", "warning");
 
-        JProgressBar encodingProgressBar = new JProgressBar();
-        encodingProgressBar.setFont(new Font("Monospaced", Font.PLAIN, 14));
-        addPacketContainer.add(encodingProgressBar, "newline,growx");
+        addPacketContainer.add(encodeBtn2, "growx, wrap");
+        addPacketContainer.add(encodeBtn, "growx, wrap");
+
+        JProgressBar encodingProgressBar = createModernProgressBar();
+        encodingProgressBar.setString("Připraven k enkódování");
+        encodingProgressBar.setStringPainted(true);
+        addPacketContainer.add(encodingProgressBar, "growx, wrap");
+
         final Logger LOG = LogManager.getLogger(encodeBtn.getClass());
 
         encodeBtn.addActionListener(e -> {
             encodingProgressBar.setIndeterminate(true);
-            encodingProgressBar.setString("Kodovaní telegramu");
+            encodingProgressBar.setString("🔄 Kódování telegramu...");
             encodingProgressBar.setStringPainted(true);
 
             SwingWorker<Void, Void> encoderWorker = new SwingWorker<>() {
                 @Override
-                protected Void doInBackground()
-                {
-
-                    String s ="";
+                protected Void doInBackground() {
+                    String s = "";
 
                     LOG.info("Sestavování telegramu");
 
-                    for (int i =0;i<packetModel.getSize(); i++)
-                    {
-                        LOG.debug("Přidávám: "+packetModel.getElementAt(i).toString() + "; Hex: " + ArithmeticalFunctions.bin2Hex(packetModel.getElementAt(i).getBinData()));
-                        LOG.trace(packetModel.getElementAt(i).getSimpleView());
-
-                        s+= packetModel.get(i).getBinData();
-                    }
-
-                                    int targetLength = (s.length() <= 210) ? 210 : 830;
-                                    LOG.trace("Velikost tlg:"+targetLength);
-
-                                    StringBuilder sb = new StringBuilder(s);
-                                    // Append '1' until the string reaches the target length
-                                    while (sb.length() < targetLength) {
-                                        sb.append('1');
-                                    }
-                                    sb.append('0');
-                                    sb.append('0');
-                                    s= sb.toString();
-
-                                    String tlg = TelegramEncoder.encode((s));
-
-                                    String as = TelegramDecoder.decodeTelegram(tlg);
-
-                                    PH ph = new PH(new String[]{s});
-
-
-                                    String name =
-                                            String.valueOf(ph.getNid_c().getDecValue()) + "_" +
-                                                    String.valueOf(ph.getNid_bg().getDecValue()) + "_" +
-                                                    String.valueOf(ph.getN_pig().getDecValue()) + "_" +
-                                                    String.valueOf(ph.getM_mcount().getDecValue());
-
-
-
-                                     {
-
-                                        File selectedFile = files.getCurrentFolder();
-
-                                        if (selectedFile == null)
-                                        {
-
-                                            LOG.warn("Není zvolena složka pro ukládaní tlg");
-                                            LOG.error("Telegram neuložen");
-                                            return null;
-                                        }
-                                         LOG.info("Cesta pro uložení: "+selectedFile.getAbsolutePath());
-
-
-
-                                        int ver = 0;
-
-                                         String filename = selectedFile.toString();
-
-                                         filename += "/"+name+"_v"+StringHelper.padLeft(String.valueOf(ver),3, '0')+".tlg";
-
-                                        File file = new File(filename);
-
-                                        while (file.exists())
-                                        {
-                                            ver++;
-                                            filename = selectedFile.toString();
-                                            filename += "/"+name+"_v"+StringHelper.padLeft(String.valueOf(ver),3, '0')+".tlg";
-                                            file = new File(filename);
-
-                                        }
-
-                                         LOG.debug("Název: "+filename);
-
-                                        final FileWriter myWriter = null;
-
-                                        try {
-
-                                            final File outputFile = file.getAbsoluteFile();
-                                            String lastTelegram = tlg;
-                                            LOG.info("Ukládám: "+outputFile.getAbsolutePath());
-                                            ArrayList<Byte> tmp = new ArrayList<Byte>();
-
-                                            int index = 0;
-
-                                            for (int i = 0; i < lastTelegram.length() - 1; i += 2) {
-
-                                                final char c = (char) ArithmeticalFunctions.bin2Dec(ArithmeticalFunctions.hex2Bin(lastTelegram.charAt(i) + "" + lastTelegram.charAt(i + 1)));
-
-                                                tmp.add((byte) c);
-
-                                                index++;
-
-                                            }
-                                            try (final FileOutputStream outputStream = new FileOutputStream(outputFile)) {
-
-                                                // Step 2: Initialize a byte array of the same size as the ArrayList
-                                                byte[] byteArray = new byte[tmp.size()];
-                                                // Step 3: Convert each Byte object to a byte primitive
-                                                for (int i = 0; i < tmp.size(); i++) {
-                                                    byteArray[i] = tmp.get(i);
-                                                }
-                                                outputStream.write(byteArray);
-                                            }
-
-                                        } catch (final IOException ex)
-                                        {
-                                            LOG.error(ex.getMessage());
-                                        }
-
-
-                                    }
-
-
-
-                    return null;
-                }
-
-                @Override
-                protected void done() {
-                    encodingProgressBar.setIndeterminate(false);
-                    encodingProgressBar.setString("Hotovo");
-                    encodingProgressBar.setValue(encodingProgressBar.getMaximum());
-                }
-            };
-            encoderWorker.execute();
-        });
-
-        encodeBtn2.addActionListener(e -> {
-            encodingProgressBar.setIndeterminate(true);
-            encodingProgressBar.setString("Kodovaní telegramu");
-            encodingProgressBar.setStringPainted(true);
-
-            SwingWorker<Void, Void> encoderWorker = new SwingWorker<>() {
-                @Override
-                protected Void doInBackground()
-                {
-
-                   PH phX = (PH) packetModel.get(0);
-
-                    for (int ii =0;ii<2;ii++)
-                   {
-
-                       PH ph1 = (PH) phX.deepCopy();
-
-                       ph1.getQ_updown() .setBinValue(phX.getQ_updown() .getBinValue());
-                       ph1.getM_version().setBinValue(phX.getM_version().getBinValue());
-                       ph1.getQ_media()  .setBinValue(phX.getQ_media()  .getBinValue());
-                       ph1.getNid_bg()   .setBinValue(phX.getNid_bg()   .getBinValue());
-                       ph1.getM_mcount() .setBinValue(phX.getM_mcount() .getBinValue());
-                       ph1.getNid_c()    .setBinValue(phX.getNid_c()    .getBinValue());
-
-
-                       ph1.getM_dup().setBinValue(String.valueOf(ArithmeticalFunctions.dec2XBin(String.valueOf(ii+1),2)));
-                       ph1.getN_pig().setBinValue(String.valueOf(ii));
-                       ph1.getN_total().setBinValue("1");
-
-
-                    String s ="";
-
-                    s+= ph1.getBinData();
-
-                    LOG.info("Sestavování telegramu");
-
-                    for (int i =1;i<packetModel.getSize(); i++)
-                    {
-                        LOG.debug("Přidávám: "+packetModel.getElementAt(i).toString() + "; Hex: " + ArithmeticalFunctions.bin2Hex(packetModel.getElementAt(i).getBinData()));
-                        LOG.trace(packetModel.getElementAt(i).getSimpleView());
-
-                        s+= packetModel.get(i).getBinData();
+                    // **FIX: Use packets in correct order**
+                    java.util.List<IPacket> orderedPackets = getPacketsInCorrectOrder(packetModel);
+                    for (IPacket packet : orderedPackets) {
+                        LOG.debug("Přidávám: " + packet.toString() + "; Hex: " + ArithmeticalFunctions.bin2Hex(packet.getBinData()));
+                        LOG.trace(packet.getSimpleView());
+                        s += packet.getBinData();
                     }
 
                     int targetLength = (s.length() <= 210) ? 210 : 830;
-                    LOG.trace("Velikost tlg:"+targetLength);
+                    LOG.trace("Velikost tlg:" + targetLength);
 
                     StringBuilder sb = new StringBuilder(s);
-                    // Append '1' until the string reaches the target length
                     while (sb.length() < targetLength) {
                         sb.append('1');
                     }
                     sb.append('0');
                     sb.append('0');
-                    s= sb.toString();
+                    s = sb.toString();
 
                     String tlg = TelegramEncoder.encode((s));
-
                     String as = TelegramDecoder.decodeTelegram(tlg);
-
                     PH ph = new PH(new String[]{s});
-
 
                     String name =
                             String.valueOf(ph.getNid_c().getDecValue()) + "_" +
@@ -1036,82 +1050,53 @@ public class DockPanelBuilder {
                                     String.valueOf(ph.getN_pig().getDecValue()) + "_" +
                                     String.valueOf(ph.getM_mcount().getDecValue());
 
-
-
                     {
-
                         File selectedFile = files.getCurrentFolder();
 
-                        if (selectedFile == null)
-                        {
-
+                        if (selectedFile == null) {
                             LOG.warn("Není zvolena složka pro ukládaní tlg");
                             LOG.error("Telegram neuložen");
                             return null;
                         }
-                        LOG.info("Cesta pro uložení: "+selectedFile.getAbsolutePath());
-
-
+                        LOG.info("Cesta pro uložení: " + selectedFile.getAbsolutePath());
 
                         int ver = 0;
-
                         String filename = selectedFile.toString();
-
-                        filename += "/"+name+"_v"+StringHelper.padLeft(String.valueOf(ver),3, '0')+".tlg";
-
+                        filename += "/" + name + "_v" + StringHelper.padLeft(String.valueOf(ver), 3, '0') + ".tlg";
                         File file = new File(filename);
 
-                        while (file.exists())
-                        {
+                        while (file.exists()) {
                             ver++;
                             filename = selectedFile.toString();
-                            filename += "/"+name+"_v"+StringHelper.padLeft(String.valueOf(ver),3, '0')+".tlg";
+                            filename += "/" + name + "_v" + StringHelper.padLeft(String.valueOf(ver), 3, '0') + ".tlg";
                             file = new File(filename);
-
                         }
 
-                        LOG.debug("Název: "+filename);
-
-                        final FileWriter myWriter = null;
+                        LOG.debug("Název: " + filename);
 
                         try {
-
                             final File outputFile = file.getAbsoluteFile();
                             String lastTelegram = tlg;
-                            LOG.info("Ukládám: "+outputFile.getAbsolutePath());
+                            LOG.info("Ukládám: " + outputFile.getAbsolutePath());
                             ArrayList<Byte> tmp = new ArrayList<Byte>();
 
-                            int index = 0;
-
                             for (int i = 0; i < lastTelegram.length() - 1; i += 2) {
-
                                 final char c = (char) ArithmeticalFunctions.bin2Dec(ArithmeticalFunctions.hex2Bin(lastTelegram.charAt(i) + "" + lastTelegram.charAt(i + 1)));
-
                                 tmp.add((byte) c);
-
-                                index++;
-
                             }
-                            try (final FileOutputStream outputStream = new FileOutputStream(outputFile)) {
 
-                                // Step 2: Initialize a byte array of the same size as the ArrayList
+                            try (final FileOutputStream outputStream = new FileOutputStream(outputFile)) {
                                 byte[] byteArray = new byte[tmp.size()];
-                                // Step 3: Convert each Byte object to a byte primitive
                                 for (int i = 0; i < tmp.size(); i++) {
                                     byteArray[i] = tmp.get(i);
                                 }
                                 outputStream.write(byteArray);
                             }
 
-                        } catch (final IOException ex)
-                        {
+                        } catch (final IOException ex) {
                             LOG.error(ex.getMessage());
                         }
-
                     }
-                    }
-
-
 
                     return null;
                 }
@@ -1119,141 +1104,174 @@ public class DockPanelBuilder {
                 @Override
                 protected void done() {
                     encodingProgressBar.setIndeterminate(false);
-                    encodingProgressBar.setString("Hotovo");
+                    encodingProgressBar.setString("✅ Hotovo!");
                     encodingProgressBar.setValue(encodingProgressBar.getMaximum());
+
+                    Color successColor = UIManager.getColor("Actions.Green");
+                    if (successColor == null) successColor = Color.GREEN.darker();
+                    encodingProgressBar.setForeground(successColor);
                 }
             };
             encoderWorker.execute();
         });
 
-        // 8) Place the container in the "Přidat packet" tab header
-        packetTabbedPane.setTabComponentAt(lastIndex, addPacketContainer);
-        packetTabbedPane.setEnabledAt(lastIndex, false); // do not allow direct selection
-    }
+        encodeBtn2.addActionListener(e -> {
+            encodingProgressBar.setIndeterminate(true);
+            encodingProgressBar.setString("🔄 Kódování telegramu...");
+            encodingProgressBar.setStringPainted(true);
 
-    /**
-     * Helper that re-triggers the logic for building all packet tabs in a single telegram.
-     *
-     * @param packetTabbedPane the parent {@link JTabbedPane} for this telegram
-     * @param packetModel      the {@link DefaultListModel} of IPackets
-     */
-    private void rebuildPacketTabs(JTabbedPane packetTabbedPane, DefaultListModel<IPacket> packetModel) {
-        // Remove all tabs except "Přidat packet"
-        for (int idx = packetTabbedPane.getTabCount() - 1; idx >= 0; idx--) {
-            if (!"Přidat packet".equals(packetTabbedPane.getTitleAt(idx))) {
-                packetTabbedPane.removeTabAt(idx);
-            }
-        }
+            SwingWorker<Void, Void> encoderWorker = new SwingWorker<>() {
+                @Override
+                protected Void doInBackground() {
+                    // **FIX: Get first PH packet in correct order**
+                    java.util.List<IPacket> orderedPackets = getPacketsInCorrectOrder(packetModel);
+                    PH phX = (PH) orderedPackets.stream().filter(p -> p instanceof PH).findFirst().orElse(null);
 
-        // Re-add each packet in the model
-        for (int z = 0; z < packetModel.size(); z++) {
-            IPacket packet = packetModel.get(z);
-            Component packetComponent = packet.getPacketComponent();
-            packetTabbedPane.addTab(packet.toString(), packetComponent);
+                    if (phX == null) return null;
 
-            // Build the custom header
-            JPanel tabHeader = buildTabHeader(packetTabbedPane, packetModel, packet, packetComponent, new JButton(),packetModel.get(0));
-            int lastIndex = packetTabbedPane.getTabCount() - 1;
-            packetTabbedPane.setTabComponentAt(lastIndex, tabHeader);
-        }
-    }
+                    for (int ii = 0; ii < 2; ii++) {
+                        PH ph1 = (PH) phX.deepCopy();
 
-    /**
-     * Moves the "Přidat packet" tab to the end of the tab list, keeping it out of the main packet ordering.
-     *
-     * @param packetTabbedPane the {@link JTabbedPane} containing the packet tabs
-     */
-    private void moveAddPacketTabToEnd(JTabbedPane packetTabbedPane) {
-        Component comp   = packetTabbedPane.getComponentAt(0);
-        Component header = packetTabbedPane.getTabComponentAt(0);
-        String title     = packetTabbedPane.getTitleAt(0);
-        Icon icon        = packetTabbedPane.getIconAt(0);
-        String tooltip   = packetTabbedPane.getToolTipTextAt(0);
-        boolean enabled  = packetTabbedPane.isEnabledAt(0);
+                        ph1.getQ_updown().setBinValue(phX.getQ_updown().getBinValue());
+                        ph1.getM_version().setBinValue(phX.getM_version().getBinValue());
+                        ph1.getQ_media().setBinValue(phX.getQ_media().getBinValue());
+                        ph1.getNid_bg().setBinValue(phX.getNid_bg().getBinValue());
+                        ph1.getM_mcount().setBinValue(phX.getM_mcount().getBinValue());
+                        ph1.getNid_c().setBinValue(phX.getNid_c().getBinValue());
 
-        int lastIndex = packetTabbedPane.getTabCount() - 1;
-        packetTabbedPane.removeTabAt(0);
-        packetTabbedPane.insertTab(title, icon, comp, tooltip, lastIndex);
-        packetTabbedPane.setTabComponentAt(lastIndex, header);
-        packetTabbedPane.setEnabledAt(lastIndex, enabled);
-        packetTabbedPane.setSelectedIndex(lastIndex);
-    }
+                        ph1.getM_dup().setBinValue(String.valueOf(ArithmeticalFunctions.dec2XBin(String.valueOf(ii + 1), 2)));
+                        ph1.getN_pig().setBinValue(String.valueOf(ii));
+                        ph1.getN_total().setBinValue("1");
 
-    /**
-     * Builds and attaches a custom header for an entire telegram tab.
-     * Includes a title label (linked to {@link PH}) and a close button
-     * that removes the entire telegram from the list.
-     *
-     * @param topTabbedPane  the main DnDTabbedPane that holds all telegrams
-     * @param listModel      the {@link DefaultListModel} storing all {@link TlgTemp} telegram objects
-     * @param telegramEntry  the current telegram data instance
-     * @return a {@link JPanel} representing the custom tab header
-     */
-    private JPanel buildTelegramTabHeader(DnDTabbedPane topTabbedPane,
-                                          DefaultListModel<TlgTemp> listModel,
-                                          TlgTemp telegramEntry)
-    {
-        JPanel mainTabHeader = new JPanel(new BorderLayout(0, 0));
-        mainTabHeader.setOpaque(false);
-        // Replace this line:
-        mainTabHeader.setBorder(BorderFactory.createEtchedBorder());
+                        String s = "";
+                        s += ph1.getBinData();
 
-// With this custom border implementation:
-        mainTabHeader.setBorder(new AbstractBorder() {
-            @Override
-            public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
-                Graphics2D g2d = (Graphics2D) g.create();
+                        LOG.info("Sestavování telegramu");
 
-                // Use the component's background color to determine border colors
-                Color background = c.getBackground();
-                Color highlight = background.brighter();
-                Color shadow = background.darker();
+                        for (IPacket packet : orderedPackets) {
+                            if (packet instanceof PH) continue; // Skip PH, we already added our modified one
+                            LOG.debug("Přidávám: " + packet.toString() + "; Hex: " + ArithmeticalFunctions.bin2Hex(packet.getBinData()));
+                            LOG.trace(packet.getSimpleView());
+                            s += packet.getBinData();
+                        }
 
-                // Draw top etched line
-                g2d.setColor(shadow);
-                g2d.drawLine(x, y, x + width - 1, y);
-                g2d.setColor(highlight);
-                g2d.drawLine(x, y + 1, x + width - 1, y + 1);
+                        int targetLength = (s.length() <= 210) ? 210 : 830;
+                        LOG.trace("Velikost tlg:" + targetLength);
 
-                // Draw right etched line
-                g2d.setColor(shadow);
-                g2d.drawLine(x + width - 1, y, x + width - 1, y + height - 1);
-                g2d.setColor(highlight);
-                g2d.drawLine(x + width - 2, y, x + width - 2, y + height - 1);
+                        StringBuilder sb = new StringBuilder(s);
+                        while (sb.length() < targetLength) {
+                            sb.append('1');
+                        }
+                        sb.append('0');
+                        sb.append('0');
+                        s = sb.toString();
 
-                g2d.dispose();
-            }
+                        String tlg = TelegramEncoder.encode((s));
+                        String as = TelegramDecoder.decodeTelegram(tlg);
+                        PH ph = new PH(new String[]{s});
 
-            @Override
-            public Insets getBorderInsets(Component c) {
-                // Return zero insets to avoid adding extra space
-                return new Insets(0, 0, 0, 0);
-            }
+                        String name =
+                                String.valueOf(ph.getNid_c().getDecValue()) + "_" +
+                                        String.valueOf(ph.getNid_bg().getDecValue()) + "_" +
+                                        String.valueOf(ph.getN_pig().getDecValue()) + "_" +
+                                        String.valueOf(ph.getM_mcount().getDecValue());
 
-            @Override
-            public Insets getBorderInsets(Component c, Insets insets) {
-                insets.top = 0;
-                insets.left = 0;
-                insets.bottom = 0;
-                insets.right = 0;
-                return insets;
-            }
+                        {
+                            File selectedFile = files.getCurrentFolder();
+
+                            if (selectedFile == null) {
+                                LOG.warn("Není zvolena složka pro ukládaní tlg");
+                                LOG.error("Telegram neuložen");
+                                return null;
+                            }
+                            LOG.info("Cesta pro uložení: " + selectedFile.getAbsolutePath());
+
+                            int ver = 0;
+                            String filename = selectedFile.toString();
+                            filename += "/" + name + "_v" + StringHelper.padLeft(String.valueOf(ver), 3, '0') + ".tlg";
+                            File file = new File(filename);
+
+                            while (file.exists()) {
+                                ver++;
+                                filename = selectedFile.toString();
+                                filename += "/" + name + "_v" + StringHelper.padLeft(String.valueOf(ver), 3, '0') + ".tlg";
+                                file = new File(filename);
+                            }
+
+                            LOG.debug("Název: " + filename);
+
+                            try {
+                                final File outputFile = file.getAbsoluteFile();
+                                String lastTelegram = tlg;
+                                LOG.info("Ukládám: " + outputFile.getAbsolutePath());
+                                ArrayList<Byte> tmp = new ArrayList<Byte>();
+
+                                for (int i = 0; i < lastTelegram.length() - 1; i += 2) {
+                                    final char c = (char) ArithmeticalFunctions.bin2Dec(ArithmeticalFunctions.hex2Bin(lastTelegram.charAt(i) + "" + lastTelegram.charAt(i + 1)));
+                                    tmp.add((byte) c);
+                                }
+
+                                try (final FileOutputStream outputStream = new FileOutputStream(outputFile)) {
+                                    byte[] byteArray = new byte[tmp.size()];
+                                    for (int i = 0; i < tmp.size(); i++) {
+                                        byteArray[i] = tmp.get(i);
+                                    }
+                                    outputStream.write(byteArray);
+                                }
+
+                            } catch (final IOException ex) {
+                                LOG.error(ex.getMessage());
+                            }
+                        }
+                    }
+
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    encodingProgressBar.setIndeterminate(false);
+                    encodingProgressBar.setString("✅ Hotovo!");
+                    encodingProgressBar.setValue(encodingProgressBar.getMaximum());
+
+                    Color successColor = UIManager.getColor("Actions.Green");
+                    if (successColor == null) successColor = Color.GREEN.darker();
+                    encodingProgressBar.setForeground(successColor);
+                }
+            };
+            encoderWorker.execute();
         });
 
+        packetTabbedPane.setTabComponentAt(lastIndex, addPacketContainer);
+
+        packetTabbedPane.setEnabledAt(lastIndex, false);
+    }
+
+    private JPanel buildModernTelegramTabHeader(DnDTabbedPane topTabbedPane,
+                                                DefaultListModel<TlgTemp> listModel,
+                                                TlgTemp telegramEntry) {
+        JPanel mainTabHeader = new JPanel(new BorderLayout(8, 0));
+        mainTabHeader.setOpaque(true);
+        mainTabHeader.setBackground(UIManager.getColor("Panel.background"));
+        mainTabHeader.setBorder(BorderFactory.createCompoundBorder(
+                createModernBorder(),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
 
         JLabel mainLabel = new JLabel(String.valueOf(telegramEntry));
         mainLabel.setOpaque(false);
+        mainLabel.setFont(mainLabel.getFont().deriveFont(Font.BOLD, 13f));
+        mainLabel.setForeground(UIManager.getColor("Label.foreground"));
         mainTabHeader.add(mainLabel, BorderLayout.CENTER);
 
-        // If the first IPacket is PH, link it to the main label if needed
+        // **FIX: Always use the first PH packet after ensuring order**
+        ensurePHFirst(telegramEntry.defaultListModel);
         if (!telegramEntry.defaultListModel.isEmpty() &&
-                telegramEntry.defaultListModel.get(0) instanceof PH ph)
-        {
+                telegramEntry.defaultListModel.get(0) instanceof PH ph) {
             ph.setjLabel(mainLabel);
-
         }
 
-        JButton closeButton = createCloseButton("×");
+        JButton closeButton = createModernCloseButton("✕");
         closeButton.addActionListener(e -> {
             int tabIndex = topTabbedPane.indexOfTabComponent(mainTabHeader);
             if (tabIndex != -1) {
@@ -1261,79 +1279,104 @@ public class DockPanelBuilder {
                 listModel.removeElement(telegramEntry);
             }
         });
-        closeButton.setFont(closeButton.getFont().deriveFont(18f));
-        // Mouse hover effects
-        closeButton.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                closeButton.setForeground(new JTextArea().getSelectedTextColor());
-            }
 
-            @Override
-            public void mouseExited(MouseEvent e) {
-                closeButton.setForeground(new JButton().getForeground());
-            }
-        });
-
-        JButton copyButton = createCloseButton("⧉");
-
-        copyButton.setFont(copyButton.getFont().deriveFont(14f));
+        JButton copyButton = createModernCloseButton("📋");
+        copyButton.setFont(copyButton.getFont().deriveFont(12f));
         copyButton.addActionListener(e -> {
-            ((DefaultListModel<TlgTemp>) telegramList.getModel()).add(
-                    0, new TlgTemp("",
-                            ArithmeticalFunctions.bin2Hex(telegramEntry.getTlg()) )
-            );
+            TlgTemp newTelegram = new TlgTemp("", ArithmeticalFunctions.bin2Hex(telegramEntry.getTlg()));
+            // **FIX: Ensure PH is first immediately after creation**
+            ensurePHFirst(newTelegram.defaultListModel);
+            ((DefaultListModel<TlgTemp>) telegramList.getModel()).add(0, newTelegram);
         });
 
-        // Mouse hover effects
         copyButton.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                copyButton.setForeground(new JTextArea().getSelectedTextColor());
+                Color accentColor = UIManager.getColor("Component.accentColor");
+                if (accentColor == null) {
+                    accentColor = UIManager.getColor("List.selectionBackground");
+                }
+                if (accentColor != null) {
+                    copyButton.setForeground(accentColor);
+                    Color hoverBg = new Color(accentColor.getRed(), accentColor.getGreen(), accentColor.getBlue(), 30);
+                    copyButton.setContentAreaFilled(true);
+                    copyButton.setBackground(hoverBg);
+                }
             }
-
             @Override
             public void mouseExited(MouseEvent e) {
-                copyButton.setForeground(new JButton().getForeground());
+                copyButton.setForeground(UIManager.getColor("Button.foreground"));
+                copyButton.setContentAreaFilled(false);
             }
         });
 
-        JPanel rightSide = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-
-
-
+        JPanel rightSide = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         rightSide.setOpaque(false);
         rightSide.add(copyButton);
         rightSide.add(closeButton);
 
         mainTabHeader.add(rightSide, BorderLayout.EAST);
+
+        // **FIX: Add DnD support for telegram tab headers**
+        MouseAdapter telegramDndMouseAdapter = new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (!SwingUtilities.isRightMouseButton(e)) {
+                    topTabbedPane.dispatchEvent(SwingUtilities.convertMouseEvent(
+                            e.getComponent(), e, topTabbedPane));
+
+                    int tabIndex = topTabbedPane.indexOfTabComponent(mainTabHeader);
+                    if (tabIndex != -1) {
+                        topTabbedPane.setSelectedIndex(tabIndex);
+                    }
+                }
+            }
+
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                topTabbedPane.dispatchEvent(SwingUtilities.convertMouseEvent(
+                        e.getComponent(), e, topTabbedPane));
+            }
+        };
+
+        mainTabHeader.addMouseListener(telegramDndMouseAdapter);
+        mainTabHeader.addMouseMotionListener(telegramDndMouseAdapter);
+        mainLabel.addMouseListener(telegramDndMouseAdapter);
+        mainLabel.addMouseMotionListener(telegramDndMouseAdapter);
+
         return mainTabHeader;
     }
 
     /**
-     * Builds and attaches a custom "Přidat nový telegram" tab to the end of the top-level
-     * {@link DnDTabbedPane}.
-     *
-     * @param topTabbedPane the main {@link DnDTabbedPane} used for entire telegrams
+     * Builds and attaches a modern custom "Přidat nový telegram" tab using system colors.
      */
-    private void buildAddTelegramTabHeader(DnDTabbedPane topTabbedPane) {
+    private void buildModernAddTelegramTabHeader(DnDTabbedPane topTabbedPane) {
         int lastIndex = topTabbedPane.getTabCount() - 1;
 
-        JPanel addTelegramHeader = new JPanel(new BorderLayout(0, 0));
-        addTelegramHeader.setOpaque(false);
+        JPanel addTelegramHeader = new JPanel(new BorderLayout(8, 0));
+        addTelegramHeader.setOpaque(true);
+        addTelegramHeader.setBackground(UIManager.getColor("Panel.background"));
+        addTelegramHeader.setBorder(BorderFactory.createCompoundBorder(
+                createModernBorder(),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
 
-        JLabel emptyTitle = new JLabel("");
-        addTelegramHeader.add(emptyTitle, BorderLayout.CENTER);
+        JLabel addLabel = new JLabel("📝 Nový telegram");
+        addLabel.setFont(addLabel.getFont().deriveFont(Font.BOLD, 13f));
+        addLabel.setForeground(UIManager.getColor("Label.foreground"));
+        addTelegramHeader.add(addLabel, BorderLayout.CENTER);
 
-        // Add button to create a new empty telegram
-        JButton addTelegramButton = createCloseButton("+");
+        JButton addTelegramButton = createModernButton("＋", "success");
+        addTelegramButton.setPreferredSize(new Dimension(30, 30));
+        addTelegramButton.setFont(addTelegramButton.getFont().deriveFont(10f));
 
-        addTelegramButton.setFont(addTelegramButton.getFont().deriveFont(16f));
-        addTelegramButton.setFocusable(false);
         addTelegramButton.addActionListener(e -> {
-            ((DefaultListModel<TlgTemp>) telegramList.getModel()).add(
-                    0, new TlgTemp("", "911372C07001FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
-            );
+            TlgTemp newTelegram = new TlgTemp("", "911372C07001FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+            // **FIX: Ensure PH is first immediately after creation**
+            SwingUtilities.invokeLater(() -> {
+                ensurePHFirst(newTelegram.defaultListModel);
+                ((DefaultListModel<TlgTemp>) telegramList.getModel()).add(0, newTelegram);
+            });
         });
 
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));

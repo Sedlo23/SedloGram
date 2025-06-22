@@ -17,6 +17,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P68 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P68.class);
@@ -28,10 +30,9 @@ public class P68 extends Packet {
     }
 
     public P68(String[] d) {
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-wind-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
 
         P3Variables = new ArrayList<>();
 

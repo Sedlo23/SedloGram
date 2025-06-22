@@ -13,49 +13,73 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * A custom {@link javax.swing.tree.TreeCellRenderer} for rendering {@link File} objects
- * within a {@link JTree}. This renderer caches system icons and display names to improve
- * performance when displaying file nodes.
+ * A modern custom {@link javax.swing.tree.TreeCellRenderer} for rendering {@link File} objects
+ * within a {@link JTree} with FlatLaf styling and improved performance through caching.
  */
 class FileTreeCellRenderer extends DefaultTreeCellRenderer {
 
     private static final Logger LOG = LogManager.getLogger(FileTreeCellRenderer.class);
 
-    /** Cache for file icons */
-    private final Map<File, Icon> iconCache = new HashMap<>();
+    /** Cache for file icons to improve performance */
+    private final Map<String, Icon> iconCache = new HashMap<>();
 
-    /** Cache for file display names */
-    private final Map<File, String> displayNameCache = new HashMap<>();
+    /** Cache for file display names to improve performance */
+    private final Map<String, String> displayNameCache = new HashMap<>();
 
     /** Provides system file details (icons, display names, etc.) */
     private final FileSystemView fileSystemView = FileSystemView.getFileSystemView();
 
-    /** Label used for rendering each tree node */
-    private final JLabel label;
+    /** Custom label for modern rendering */
+    private final JLabel renderLabel;
 
-    /** Colors for selected and non-selected states */
-    private final Color backgroundSelectionColor = UIManager.getColor("Tree.selectionBackground");
-    private final Color textSelectionColor = UIManager.getColor("Tree.selectionForeground");
-    private final Color backgroundNonSelectionColor = UIManager.getColor("Tree.textBackground");
-    private final Color textNonSelectionColor = UIManager.getColor("Tree.textForeground");
+    /** Modern colors from UIManager */
+    private final Color backgroundSelectionColor;
+    private final Color textSelectionColor;
+    private final Color backgroundNonSelectionColor;
+    private final Color textNonSelectionColor;
+    private final Color borderColor;
+
+    /** Modern font for file names */
+    private final Font fileFont;
 
     /**
-     * Constructs a new {@code FileTreeCellRenderer} that uses a {@link JLabel}
-     * to render file nodes in a {@link JTree}.
+     * Constructs a new modern {@code FileTreeCellRenderer}.
      */
     FileTreeCellRenderer() {
-        label = new JLabel();
-        label.setOpaque(true);
+        // Initialize custom label
+        renderLabel = new JLabel();
+        renderLabel.setOpaque(false);
+
+        // Initialize modern colors with fallbacks
+        backgroundSelectionColor = getUIColor("Tree.selectionBackground", new Color(0, 123, 255, 50));
+        textSelectionColor = getUIColor("Tree.selectionForeground", Color.BLACK);
+        backgroundNonSelectionColor = getUIColor("Tree.background", Color.WHITE);
+        textNonSelectionColor = getUIColor("Tree.foreground", Color.BLACK);
+        borderColor = getUIColor("Component.borderColor", new Color(220, 220, 220));
+
+        // Initialize modern font
+        Font systemFont = UIManager.getFont("Tree.font");
+        if (systemFont != null) {
+            fileFont = systemFont.deriveFont(Font.PLAIN, 12f);
+        } else {
+            fileFont = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+        }
     }
 
     /**
-     * Returns a component configured to display the specified value in the tree.
-     * This method retrieves file icons and display names from caches or computes them
-     * using the {@link FileSystemView} if not already cached.
+     * Safely gets a color from UIManager with fallback.
+     */
+    private Color getUIColor(String key, Color fallback) {
+        Color color = UIManager.getColor(key);
+        return color != null ? color : fallback;
+    }
+
+    /**
+     * Returns a component configured to display the specified value in the tree
+     * with modern styling and improved performance through caching.
      *
      * @param tree     the {@link JTree} we're painting
-     * @param value    the value to be rendered; expected to be a {@link DefaultMutableTreeNode}
-     *                 whose user object is a {@link File}
+     * @param value    the value to be rendered
      * @param selected whether the node is selected
      * @param expanded whether the node is expanded
      * @param leaf     whether the node is a leaf node
@@ -71,40 +95,169 @@ class FileTreeCellRenderer extends DefaultTreeCellRenderer {
                                                   boolean leaf,
                                                   int row,
                                                   boolean hasFocus) {
-        
 
+        // Check if this is a file node
         if (!(value instanceof DefaultMutableTreeNode node) ||
                 !(node.getUserObject() instanceof File file)) {
             return super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
         }
 
-        // Retrieve or compute the icon for the file
-        Icon icon = iconCache.computeIfAbsent(file, f -> {
-            try {
-                return fileSystemView.getSystemIcon(f);
-            } catch (Exception e) {
-                
-                return null;
-            }
-        });
-        label.setIcon(icon);
+        // Configure the custom label
+        setupLabelForFile(file, selected);
 
-        // Retrieve or compute the display name for the file
-        String displayName = displayNameCache.computeIfAbsent(file, f -> fileSystemView.getSystemDisplayName(f));
-        label.setText(displayName);
+        return renderLabel;
+    }
 
-        // Set the label's colors based on selection state
+    /**
+     * Sets up the render label for a specific file with modern styling.
+     *
+     * @param file     the file to render
+     * @param selected whether the node is selected
+     */
+    private void setupLabelForFile(File file, boolean selected) {
+        // Get cached or compute icon
+        Icon icon = getFileIcon(file);
+        renderLabel.setIcon(icon);
+
+        // Get cached or compute display name
+        String displayName = getFileDisplayName(file);
+        renderLabel.setText(displayName);
+
+        // Apply modern styling
+        renderLabel.setFont(fileFont);
+        renderLabel.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+
+        // Set colors based on selection state
         if (selected) {
-            label.setBackground(backgroundSelectionColor);
-            label.setForeground(textSelectionColor);
+            renderLabel.setForeground(textSelectionColor);
+            renderLabel.setOpaque(true);
+            renderLabel.setBackground(backgroundSelectionColor);
         } else {
-            label.setBackground(backgroundNonSelectionColor);
-            label.setForeground(textNonSelectionColor);
+            renderLabel.setForeground(textNonSelectionColor);
+            renderLabel.setOpaque(false);
         }
 
-        // Some Look-and-Feels might require the label to be non-opaque.
-        label.setOpaque(false);
+        // Add special styling for different file types
+        applyFileTypeSpecificStyling(file, selected);
+    }
 
-        return label;
+    /**
+     * Gets the icon for a file from cache or computes it.
+     *
+     * @param file the file to get icon for
+     * @return the file icon
+     */
+    private Icon getFileIcon(File file) {
+        String cacheKey = file.getAbsolutePath();
+
+        return iconCache.computeIfAbsent(cacheKey, key -> {
+            try {
+                Icon systemIcon = fileSystemView.getSystemIcon(file);
+
+                // If no system icon, provide type-specific icons
+                if (systemIcon == null) {
+                    return getDefaultIconForFileType(file);
+                }
+
+                return systemIcon;
+            } catch (Exception e) {
+                LOG.warn("Chyba při získávání ikony pro soubor: {}", file.getName());
+                return getDefaultIconForFileType(file);
+            }
+        });
+    }
+
+    /**
+     * Gets the display name for a file from cache or computes it.
+     *
+     * @param file the file to get display name for
+     * @return the display name
+     */
+    private String getFileDisplayName(File file) {
+        String cacheKey = file.getAbsolutePath();
+
+        return displayNameCache.computeIfAbsent(cacheKey, key -> {
+            try {
+                String systemName = fileSystemView.getSystemDisplayName(file);
+                return (systemName != null && !systemName.trim().isEmpty()) ?
+                        systemName : file.getName();
+            } catch (Exception e) {
+                LOG.warn("Chyba při získávání display name pro soubor: {}", file.getName());
+                return file.getName();
+            }
+        });
+    }
+
+    /**
+     * Provides default icons for different file types when system icons are unavailable.
+     *
+     * @param file the file to get default icon for
+     * @return a default icon
+     */
+    private Icon getDefaultIconForFileType(File file) {
+        if (file.isDirectory()) {
+            return UIManager.getIcon("FileView.directoryIcon");
+        }
+
+        String name = file.getName().toLowerCase();
+        if (name.endsWith(".tlg")) {
+            // Could create a custom icon for TLG files
+            return UIManager.getIcon("FileView.fileIcon");
+        } else if (name.endsWith(".pdf")) {
+            return UIManager.getIcon("FileView.fileIcon");
+        } else {
+            return UIManager.getIcon("FileView.fileIcon");
+        }
+    }
+
+    /**
+     * Applies file type specific styling (like different colors for different file types).
+     *
+     * @param file     the file being rendered
+     * @param selected whether the node is selected
+     */
+    private void applyFileTypeSpecificStyling(File file, boolean selected) {
+        if (selected) {
+            return; // Don't apply type-specific styling for selected items
+        }
+
+        String fileName = file.getName().toLowerCase();
+
+        if (file.isDirectory()) {
+            // Directories could have a different color
+            Color directoryColor = getUIColor("Tree.textForeground", textNonSelectionColor);
+            renderLabel.setForeground(directoryColor);
+        } else if (fileName.endsWith(".tlg")) {
+            // TLG files could have a special color
+            Color tlgColor = getUIColor("Component.accentColor", new Color(0, 123, 255));
+            if (tlgColor != null) {
+                renderLabel.setForeground(tlgColor);
+            }
+        } else if (fileName.endsWith(".pdf")) {
+            // PDF files could have their own color
+            Color pdfColor = getUIColor("Actions.Red", new Color(220, 53, 69));
+            if (pdfColor != null) {
+                renderLabel.setForeground(pdfColor);
+            }
+        }
+    }
+
+    /**
+     * Clears the caches to free memory. Call this when the tree is being disposed
+     * or when memory usage becomes a concern.
+     */
+    public void clearCaches() {
+        iconCache.clear();
+        displayNameCache.clear();
+        LOG.debug("FileTreeCellRenderer caches cleared");
+    }
+
+    /**
+     * Gets the current cache size for monitoring purposes.
+     *
+     * @return the total number of cached items
+     */
+    public int getCacheSize() {
+        return iconCache.size() + displayNameCache.size();
     }
 }

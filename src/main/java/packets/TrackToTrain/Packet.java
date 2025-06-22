@@ -32,22 +32,36 @@ public abstract class Packet implements IPacket {
     }
 
     public Packet deepCopy() {
-
-        Class<?> c = null;
-        Object object = null;
-
         try {
-            c = Class.forName(this.getClass().getName());
-            Constructor<?> cons = c.getConstructor();
-            object = cons.newInstance();
+            Class<?> c = Class.forName(this.getClass().getName());
+
+            // First create with current data
+            String currentBinData = this.getBinData();
+            Constructor<?> cons = c.getConstructor(String[].class);
+            Packet newPacket = (Packet) cons.newInstance(new Object[]{new String[]{currentBinData}});
+
+            // Copy additional properties that might not be in binary data
+            newPacket.setIcon(this.getIcon());
+
+            // Copy the JButton reference if needed
+            if (this.getjProgressBar() != null) {
+                newPacket.setjProgressBar(this.getjProgressBar());
+            }
+
+            return newPacket;
 
         } catch (Exception e) {
             e.printStackTrace();
+            // Fallback
+            try {
+                Class<?> c = Class.forName(this.getClass().getName());
+                Constructor<?> cons = c.getConstructor();
+                return (Packet) cons.newInstance();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                return null;
+            }
         }
-
-
-        return (Packet) object;
-
     }
 
     @Override

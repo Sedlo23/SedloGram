@@ -20,6 +20,8 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P42 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P42.class);
@@ -63,10 +65,9 @@ public class P42 extends Packet {
         
 
         this.q_sleepsession = (Q_SLEEPSESSION) new Q_SLEEPSESSION().initValueSet(d);
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-radio-station-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     @Override

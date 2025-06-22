@@ -6,6 +6,7 @@ import ModernDocking.ui.HeaderController;
 import ModernDocking.ui.HeaderModel;
 
 import javax.swing.*;
+import javax.swing.border.AbstractBorder;
 import javax.swing.event.AncestorEvent;
 import javax.swing.event.AncestorListener;
 import java.awt.*;
@@ -14,12 +15,6 @@ import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * A modern header UI for dockable components. This class builds a header panel
- * that displays a title and action buttons with a flat, minimal design.
- * It implements {@link DockingHeaderUI} and {@link AncestorListener} to initialize its
- * layout once added to a container.
- */
 public class HeaderCustomUI extends JPanel implements DockingHeaderUI, AncestorListener {
 
     private final HeaderController headerController;
@@ -33,77 +28,110 @@ public class HeaderCustomUI extends JPanel implements DockingHeaderUI, AncestorL
 
     private final List<JButton> customOptionButtons = new ArrayList<>();
 
-    private static final Color HOVER_COLOR = new Color(220, 220, 220);
-    private static final int BUTTON_SIZE = 28;
-    private static final int ICON_SIZE = 16;
+    private static final int BUTTON_SIZE = 32;
+    private static final int TITLE_FONT_SIZE = 13;
+
+    // Colors for auto-hide (pin) button styling
+    private static final Color AUTO_HIDE_BG = new Color(248, 249, 250);
+    private static final Color AUTO_HIDE_HOVER = new Color(230, 230, 230);
+    private static final Color AUTO_HIDE_ACTIVE = new Color(0, 123, 255, 30);
+    private static final Color AUTO_HIDE_BORDER = new Color(220, 220, 220);
 
     private boolean initialized = false;
 
-    /**
-     * Constructs a new modern HeaderCustomUI using the provided controller and model.
-     *
-     * @param headerController the controller responsible for header actions
-     * @param headerModel      the model containing header data and state
-     */
     public HeaderCustomUI(HeaderController headerController, HeaderModel headerModel) {
         this.headerController = headerController;
         this.headerModel = headerModel;
         setOpaque(true);
 
-        // Add AncestorListener to initialize once component is added to a container
         JComponent component = (JComponent) headerModel.dockable;
         component.addAncestorListener(this);
     }
 
-    /**
-     * Performs one-time initialization of the header UI components.
-     */
     private void init() {
         if (initialized) {
             return;
         }
         initialized = true;
 
-        // Set modern flat look with subtle border
-        setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(230, 230, 230)));
-
-        // Configure background color
-        Color bgColor = DockingProperties.getTitlebarBackgroundColor();
-        setBackground(bgColor);
-
-        // Configure title label
-        titleLabel.setText(headerModel.titleText());
-        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 12f));
-        titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 0));
-
-        // Create action buttons with modern icons
+        setupModernStyling();
+        setupTitleLabel();
         setupActionButtons();
-
-        // Handle custom options
-        if (headerModel.hasMoreOptions()) {
-            createCustomOptionButtons();
-        }
-
-        // Configure layout
         setupLayout();
-
-        // Add listener for Look-and-Feel changes
-        UIManager.addPropertyChangeListener(e -> {
-            if ("lookAndFeel".equals(e.getPropertyName())
-                    || "ModernDocking.titlebar.background".equals(e.getPropertyName())) {
-                Color newBg = DockingProperties.getTitlebarBackgroundColor();
-                SwingUtilities.invokeLater(() -> setBackground(newBg));
-            }
-        });
+        setupThemeListener();
     }
 
-    /**
-     * Sets up the action buttons with modern symbols and tooltips.
-     */
+    private void setupModernStyling() {
+        setBorder(createModernHeaderBorder());
+
+        Color bgColor = DockingProperties.getTitlebarBackgroundColor();
+        if (bgColor == null) {
+            bgColor = UIManager.getColor("Panel.background");
+        }
+        setBackground(bgColor);
+
+        setMinimumSize(new Dimension(0, 40));
+        setPreferredSize(new Dimension(0, 40));
+    }
+
+    private AbstractBorder createModernHeaderBorder() {
+        return new AbstractBorder() {
+            @Override
+            public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                Color borderColor = DockingProperties.getTitlebarBorderColor();
+                if (borderColor == null) {
+                    borderColor = new Color(230, 230, 230);
+                }
+
+                if (DockingProperties.isTitlebarBorderEnabled()) {
+                    g2d.setColor(borderColor);
+                    g2d.setStroke(new BasicStroke(DockingProperties.getTitlebarBorderSize()));
+                    g2d.drawLine(x, y + height - 1, x + width, y + height - 1);
+                }
+                g2d.dispose();
+            }
+
+            @Override
+            public Insets getBorderInsets(Component c) {
+                return new Insets(8, 12, 8, 8);
+            }
+        };
+    }
+
+    private void setupTitleLabel() {
+        titleLabel.setText(headerModel.titleText());
+
+        Font titleFont = UIManager.getFont("Label.font");
+        if (titleFont == null) {
+            titleFont = new Font(Font.SANS_SERIF, Font.BOLD, TITLE_FONT_SIZE);
+        } else {
+            titleFont = titleFont.deriveFont(Font.BOLD, (float) TITLE_FONT_SIZE);
+        }
+        titleLabel.setFont(titleFont);
+        titleLabel.setForeground(UIManager.getColor("Label.foreground"));
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 0));
+    }
+
     private void setupActionButtons() {
-        // Pin/Unpin button
-        pinButton.setText("📌"); // Unicode pin
-        pinButton.setToolTipText("Toggle Pin State");
+        setupPinButton();
+        setupWindowButton();
+        setupMaximizeButton();
+        setupCloseButton();
+
+        List<JButton> allButtons = List.of(pinButton, windowButton, maximizeButton, closeButton);
+        allButtons.forEach(this::applyModernButtonStyling);
+
+        // Apply special styling to the pin button (auto-hide button)
+        applyAutoHideButtonStyling(pinButton);
+    }
+
+    private void setupPinButton() {
+        // Enhanced pin button with better auto-hide visualization
+        updatePinButtonAppearance();
+        pinButton.setToolTipText("Toggle Auto-Hide");
         pinButton.addActionListener(e -> {
             if (headerModel.isUnpinned()) {
                 headerController.pinDockable();
@@ -112,135 +140,122 @@ public class HeaderCustomUI extends JPanel implements DockingHeaderUI, AncestorL
             }
             update();
         });
+    }
 
-        // Window button (float into separate window)
-        windowButton.setText("⬆"); // Unicode up arrow
+    private void updatePinButtonAppearance() {
+        if (headerModel.isUnpinned()) {
+            pinButton.setText("📌"); // Pinned state
+            pinButton.setToolTipText("Pin Panel");
+        } else {
+            pinButton.setText("📍"); // Unpinned (auto-hide) state
+            pinButton.setToolTipText("Auto-Hide Panel");
+        }
+    }
+
+    private void setupWindowButton() {
+        windowButton.setText("⧉");
         windowButton.setToolTipText("Float in New Window");
         windowButton.addActionListener(e -> headerController.newWindow());
+    }
 
-        // Maximize/Restore button
-        maximizeButton.setText("⛶"); // Unicode maximize
+    private void setupMaximizeButton() {
+        maximizeButton.setText("⬜");
         maximizeButton.setToolTipText("Maximize/Restore");
         maximizeButton.addActionListener(e -> {
             if (headerModel.isMaximized()) {
                 headerController.minimize();
-                maximizeButton.setText("⛶");
+                maximizeButton.setText("⬜");
+                maximizeButton.setToolTipText("Maximize");
             } else {
                 headerController.maximize();
-                maximizeButton.setText("⬇");
+                maximizeButton.setText("🗗");
+                maximizeButton.setToolTipText("Restore");
             }
         });
+    }
 
-        // Close button
-        closeButton.setText("✕"); // Unicode X
+    private void setupCloseButton() {
+        closeButton.setText("✕");
         closeButton.setToolTipText("Close");
         closeButton.addActionListener(e -> headerController.close());
-
-        // Apply modern button styling to all buttons
-        List<JButton> allButtons = List.of(pinButton, windowButton, maximizeButton, closeButton);
-        for (JButton button : allButtons) {
-            styleModernButton(button);
-        }
     }
 
-    /**
-     * Creates buttons for any custom options provided by the header model.
-     */
-    private void createCustomOptionButtons() {
-        final JButton[] optionButton = {null};
-
-        // Create a custom action listener to handle model options
-    /*    headerModel.addMoreOptionsProvider(actions -> {
-            if (actions != null && !actions.isEmpty()) {
-                for (Action action : actions) {
-                    JButton button = new JButton();
-
-                    // Set button icon/text from action
-                    if (action.getValue(Action.SMALL_ICON) != null) {
-                        button.setIcon((Icon)action.getValue(Action.SMALL_ICON));
-                    } else if (action.getValue(Action.NAME) != null) {
-                        button.setText(action.getValue(Action.NAME).toString());
-                    }
-
-                    // Set tooltip if available
-                    if (action.getValue(Action.SHORT_DESCRIPTION) != null) {
-                        button.setToolTipText(action.getValue(Action.SHORT_DESCRIPTION).toString());
-                    }
-
-                    button.addActionListener(action);
-                    styleModernButton(button);
-                    customOptionButtons.add(button);
-                }
-            }
-        });
-   */
-
-    }
-
-    /**
-     * Applies modern styling to a button.
-     *
-     * @param button the button to style
-     */
-    private void styleModernButton(JButton button) {
+    private void applyModernButtonStyling(JButton button) {
         button.setFocusPainted(false);
         button.setBorderPainted(false);
         button.setContentAreaFilled(false);
         button.setOpaque(false);
-        button.setFont(button.getFont().deriveFont(13f));
-        button.setForeground(new Color(80, 80, 80));
 
-        // Set preferred size for consistent button dimensions
-        button.setPreferredSize(new Dimension(BUTTON_SIZE, BUTTON_SIZE));
-        button.setMinimumSize(new Dimension(BUTTON_SIZE, BUTTON_SIZE));
-        button.setMaximumSize(new Dimension(BUTTON_SIZE, BUTTON_SIZE));
+        Font buttonFont = UIManager.getFont("Button.font");
+        if (buttonFont == null) {
+            buttonFont = new Font(Font.SANS_SERIF, Font.PLAIN, 14);
+        }
+        button.setFont(buttonFont);
 
-        // Add hover effect
+        Color foregroundColor = UIManager.getColor("Button.foreground");
+        if (foregroundColor == null) {
+            foregroundColor = new Color(100, 100, 100);
+        }
+        button.setForeground(foregroundColor);
+
+        Dimension buttonSize = new Dimension(BUTTON_SIZE, BUTTON_SIZE);
+        button.setPreferredSize(buttonSize);
+        button.setMinimumSize(buttonSize);
+        button.setMaximumSize(buttonSize);
+
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+    }
+
+    private void applyAutoHideButtonStyling(JButton button) {
+        // Special styling for the auto-hide (pin) button
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
                 button.setOpaque(true);
-                button.setBackground(HOVER_COLOR);
-
-                // Special case for close button - red hover
-                if (button == closeButton) {
-                    button.setBackground(new Color(232, 17, 35));
-                    button.setForeground(Color.WHITE);
-                }
+                button.setBackground(AUTO_HIDE_HOVER);
+                button.setBorder(BorderFactory.createLineBorder(AUTO_HIDE_BORDER, 1));
+                button.repaint();
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
                 button.setOpaque(false);
-                button.setBackground(getBackground());
+                button.setBorder(null);
+                button.repaint();
+            }
 
-                // Reset foreground color for close button
-                if (button == closeButton) {
-                    button.setForeground(new Color(80, 80, 80));
+            @Override
+            public void mousePressed(MouseEvent e) {
+                button.setBackground(AUTO_HIDE_ACTIVE);
+                button.repaint();
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (button.contains(e.getPoint())) {
+                    button.setBackground(AUTO_HIDE_HOVER);
+                } else {
+                    button.setOpaque(false);
+                    button.setBorder(null);
                 }
+                button.repaint();
             }
         });
     }
 
-    /**
-     * Sets up the layout of the header components.
-     */
     private void setupLayout() {
         setLayout(new BorderLayout());
 
-        // Add title with some padding
-        add(titleLabel, BorderLayout.CENTER);
+        JPanel titlePanel = new JPanel(new BorderLayout());
+        titlePanel.setOpaque(false);
+        titlePanel.add(titleLabel, BorderLayout.WEST);
+        add(titlePanel, BorderLayout.CENTER);
 
-        // Create button panel for right-aligned buttons
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 0));
         buttonPanel.setOpaque(false);
 
-        // Add custom option buttons first
-        for (JButton button : customOptionButtons) {
-            buttonPanel.add(button);
-        }
+        customOptionButtons.forEach(buttonPanel::add);
 
-        // Add built-in action buttons
         if (headerModel.isPinnedAllowed()) {
             buttonPanel.add(pinButton);
         }
@@ -260,23 +275,52 @@ public class HeaderCustomUI extends JPanel implements DockingHeaderUI, AncestorL
         add(buttonPanel, BorderLayout.EAST);
     }
 
-    /**
-     * Updates the UI elements based on the current state of the header model.
-     */
+    private void setupThemeListener() {
+        UIManager.addPropertyChangeListener(e -> {
+            if ("lookAndFeel".equals(e.getPropertyName()) ||
+                    e.getPropertyName().startsWith("ModernDocking.titlebar")) {
+                SwingUtilities.invokeLater(this::updateTheme);
+            }
+        });
+    }
+
+    private void updateTheme() {
+        Color newBg = DockingProperties.getTitlebarBackgroundColor();
+        if (newBg == null) {
+            newBg = UIManager.getColor("Panel.background");
+        }
+        setBackground(newBg);
+
+        titleLabel.setForeground(UIManager.getColor("Label.foreground"));
+
+        Color buttonFg = UIManager.getColor("Button.foreground");
+        if (buttonFg != null) {
+            pinButton.setForeground(buttonFg);
+            windowButton.setForeground(buttonFg);
+            maximizeButton.setForeground(buttonFg);
+            closeButton.setForeground(buttonFg);
+        }
+
+        repaint();
+    }
+
     public void update() {
-        // Update pin button state
         if (headerModel.isPinnedAllowed()) {
-            pinButton.setText(headerModel.isUnpinned() ? "📌" : "👁️");
-            pinButton.setToolTipText(headerModel.isUnpinned() ? "Pin" : "Unpin");
+            updatePinButtonAppearance();
         }
 
-        // Update maximize button state
         if (headerModel.isMaximizeAllowed()) {
-            maximizeButton.setText(headerModel.isMaximized() ? "⬇" : "⛶");
+            if (headerModel.isMaximized()) {
+                maximizeButton.setText("🗗");
+                maximizeButton.setToolTipText("Restore");
+            } else {
+                maximizeButton.setText("⬜");
+                maximizeButton.setToolTipText("Maximize");
+            }
         }
 
-        // Update title
         titleLabel.setText(headerModel.titleText());
+        repaint();
     }
 
     @Override

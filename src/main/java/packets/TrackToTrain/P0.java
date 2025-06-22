@@ -12,6 +12,8 @@ import tools.ui.GUIHelper;
 import javax.swing.*;
 import java.awt.*;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 /**
  * Represents a P0 packet, which encapsulates specific NID fields and provides
  * both binary and hexadecimal representations. It also constructs a Swing UI
@@ -44,10 +46,8 @@ public class P0 extends Packet {
         
 
         this.nid_vbcmk = (NID_VBCMK) new NID_VBCMK().initValueSet(d);
-        
 
-        // Set the icon for this packet
-        setIcon(GUIHelper.getImageIconFromResources("icons8-mark-view-as-hidden-80"));
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
         
 
     }

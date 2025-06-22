@@ -16,6 +16,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P66 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P66.class);
@@ -37,8 +39,7 @@ public class P66 extends Packet {
         P3Variables.add((L_PACKET) new L_PACKET().initValueSet(d));
         P3Variables.add((NID_TSR) new NID_TSR().initValueSet(d));
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-restriction-80"));
-        
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     @Override

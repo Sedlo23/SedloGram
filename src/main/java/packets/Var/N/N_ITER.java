@@ -1,5 +1,6 @@
 package packets.Var.N;
 
+import packets.Var.BinaryChangeListener;
 import tools.ui.GUIHelper;
 import tools.string.StringHelper;
 import packets.Interfaces.IterationData;
@@ -18,6 +19,9 @@ public class N_ITER extends Variables {
     private String nameOfIteration;
     private int WRAPINT = 3;
 
+    /** Listeners that will be propagated to child variables */
+    private final ArrayList<BinaryChangeListener> childListeners = new ArrayList<>();
+
     public N_ITER() {
         this("Iterace");
     }
@@ -26,28 +30,170 @@ public class N_ITER extends Variables {
         super("N_ITER", 5, "Number of iterations of a data set following this variable in a packet");
         this.nameOfIteration = nameOfIteration;
 
+        // Add default listener to track changes in child variables
+        addDefaultChildListener();
+    }
 
+    /**
+     * Adds a listener that will be automatically applied to all child variables
+     * (both template and iteration data variables).
+     *
+     * @param listener the listener to add to all children
+     * @return this N_ITER instance for chaining
+     */
+    public N_ITER addChildListener(BinaryChangeListener listener) {
+        if (listener != null) {
+            childListeners.add(listener);
+
+            // Apply to existing template variables
+            template.forEach(var -> var.addBinaryChangeListener(listener));
+
+            // Apply to existing iteration data variables
+            data.forEach(iterData ->
+                    iterData.forEach(var -> applyListenerRecursively(var, listener))
+            );
+        }
+        return this;
+    }
+
+    /**
+     * Removes a listener from all child variables and from the child listeners list.
+     *
+     * @param listener the listener to remove
+     * @return true if the listener was found and removed
+     */
+    public boolean removeChildListener(BinaryChangeListener listener) {
+        boolean removed = childListeners.remove(listener);
+
+        if (removed) {
+            // Remove from existing template variables
+            template.forEach(var -> var.removeBinaryChangeListener(listener));
+
+            // Remove from existing iteration data variables
+            data.forEach(iterData ->
+                    iterData.forEach(var -> removeListenerRecursively(var, listener))
+            );
+        }
+
+        return removed;
+    }
+
+    /**
+     * Applies a listener recursively to a variable and its children if it's an N_ITER.
+     */
+    private void applyListenerRecursively(Variables variable, BinaryChangeListener listener) {
+        variable.addBinaryChangeListener(listener);
+        if (variable instanceof N_ITER) {
+            ((N_ITER) variable).addChildListener(listener);
+        }
+    }
+
+    /**
+     * Removes a listener recursively from a variable and its children if it's an N_ITER.
+     */
+    private void removeListenerRecursively(Variables variable, BinaryChangeListener listener) {
+        variable.removeBinaryChangeListener(listener);
+        if (variable instanceof N_ITER) {
+            ((N_ITER) variable).removeChildListener(listener);
+        }
+    }
+
+    /**
+     * Applies all registered child listeners to a variable.
+     *
+     * @param variable the variable to apply listeners to
+     */
+    private void applyChildListeners(Variables variable) {
+        childListeners.forEach(listener -> applyListenerRecursively(variable, listener));
+    }
+
+    /**
+     * Adds a default listener that logs child variable changes.
+     */
+    private void addDefaultChildListener() {
+        addChildListener((source, oldValue, newValue) -> {
+            System.out.println(String.format(
+                    "Child variable '%s' in iteration '%s' changed from '%s' to '%s'",
+                    source.getName(), nameOfIteration, oldValue, newValue
+            ));
+        });
     }
 
     public N_ITER addNewIterVar(Variables newVar) {
-        template.add(newVar instanceof N_ITER ? (N_ITER) newVar : newVar);
+        Variables varToAdd = newVar instanceof N_ITER ? (N_ITER) newVar : newVar;
+
+        // Apply all child listeners to the new variable
+        applyChildListeners(varToAdd);
+
+        template.add(varToAdd);
+
+        // Update existing iteration data with the new variable
+        updateExistingIterationsWithNewVariable(varToAdd);
+
         return this;
+    }
+
+    /**
+     * Updates existing iterations by adding a copy of the new variable to each.
+     *
+     * @param newVar the new variable to add to existing iterations
+     */
+    private void updateExistingIterationsWithNewVariable(Variables newVar) {
+        for (IterationData iterData : data) {
+            Variables copy = createDeepCopyWithListeners(newVar);
+            iterData.add(copy);
+        }
+    }
+
+    /**
+     * Creates a deep copy of a variable and ensures all listeners are applied.
+     */
+    private Variables createDeepCopyWithListeners(Variables var) {
+        Variables copy = var instanceof N_ITER ?
+                ((N_ITER) var).deepCopy() : var.deepCopy();
+
+        applyChildListeners(copy);
+
+
+        return copy;
     }
 
     @Override
     public void setBinValue(String binValue) {
+        String oldBinValue = getBinValue();
         super.setBinValue(binValue);
         adjustDataSize();
+        notifyBinaryChangeListeners(oldBinValue, binValue);
     }
 
     @Override
     public Variables deepCopy() {
-        N_ITER copy = new N_ITER();
-        copy.template = template;
-        copy.initValueSet(new String[]{getBinValue()});
+        N_ITER copy = new N_ITER(nameOfIteration);
+
+        // Copy child listeners FIRST before creating any variables
+        copy.childListeners.addAll(this.childListeners);
+
+        // Copy template variables and apply listeners
+        for (Variables var : template) {
+            Variables varCopy = createDeepCopyWithListeners(var);
+            copy.template.add(varCopy);
+        }
+
         copy.setWRAPINT(getWRAPINT());
-        copy.data.addAll(this.data);
+
+        // Set the value AFTER copying listeners and template
         copy.setBinValue(this.getBinValue());
+
+        // Deep copy existing data and apply listeners
+        for (IterationData iterData : this.data) {
+            IterationData dataCopy = new IterationData(copy.data, nameOfIteration);
+            for (Variables var : iterData) {
+                Variables varCopy = createDeepCopyWithListeners(var);
+                dataCopy.add(varCopy);
+            }
+            copy.data.add(dataCopy);
+        }
+
         return copy;
     }
 
@@ -55,7 +201,6 @@ public class N_ITER extends Variables {
 
     @Override
     public Component getComponent() {
-
         JPanel mainPanel = new JPanel(new MigLayout("fill, insets 0, hidemode 3", "[grow,fill][grow,fill]", "[][grow,fill]"));
 
         // Control component
@@ -65,7 +210,6 @@ public class N_ITER extends Variables {
         // JList to show iteration data
         JList<IterationData> jList = new JList<>();
         JScrollPane scrollPane = new JScrollPane(jList);
-       // scrollPane.setPreferredSize(new Dimension(200, 300));
         scrollPane.setBorder(BorderFactory.createTitledBorder("Iteration Data"));
 
         mainPanel.add(scrollPane, "grow");
@@ -76,46 +220,40 @@ public class N_ITER extends Variables {
 
         mainPanel.add(iterationDetailPanel, "grow");
 
-        JComboBox j =((JComboBox<?>) ((JPanel) control).getComponent(1));
-
+        JComboBox j = ((JComboBox<?>) ((JPanel) control).getComponent(1));
 
         ((JComboBox<?>) ((JPanel) control).getComponent(1)).addActionListener(e -> {
-            updateListModel(scrollPane, jList,iterationDetailPanel);
+            updateListModel(scrollPane, jList, iterationDetailPanel);
             updateIterationPanelVisibility(iterationDetailPanel);
         });
-
-
 
         // Listener for JList selections to update details
         jList.addListSelectionListener(e -> updateIterationPanel(iterationDetailPanel, jList));
 
         // Initial updates
-        updateListModel(scrollPane, jList,iterationDetailPanel);
+        updateListModel(scrollPane, jList, iterationDetailPanel);
         updateIterationPanelVisibility(iterationDetailPanel);
 
         return mainPanel;
     }
 
-
     private void adjustDataSize() {
         int targetSize = getDecValue();
 
-        while (data.size() < targetSize)
-        {
+        while (data.size() < targetSize) {
             data.add(copyList());
         }
 
         while (data.size() > targetSize) {
             data.remove(data.size() - 1);
         }
-
-
     }
 
     private IterationData copyList() {
         IterationData copy = new IterationData(data, nameOfIteration);
         for (Variables var : template) {
-            copy.add(var instanceof N_ITER ? ((N_ITER) var).deepCopy() : var.deepCopy());
+            Variables varCopy = createDeepCopyWithListeners(var);
+            copy.add(varCopy);
         }
         return copy;
     }
@@ -128,15 +266,13 @@ public class N_ITER extends Variables {
         boolean hasData = !model.isEmpty();
         scrollPane.setVisible(hasData);
         iterationDetailPanel.setVisible(hasData);
-
     }
-
 
     private void updateIterationPanelVisibility(JPanel iterationPanel) {
         iterationPanel.setVisible(getDecValue() != 0);
     }
 
-    private void updateIterationPanel(JPanel iterationPanel,JList<IterationData> jList) {
+    private void updateIterationPanel(JPanel iterationPanel, JList<IterationData> jList) {
         JPanel contentPanel = new JPanel(new MigLayout("wrap 1", "[]0[]"));
 
         // Use bulk update to minimize revalidations and repaints
@@ -161,24 +297,17 @@ public class N_ITER extends Variables {
             Component component;
 
             if (var instanceof N_ITER) {
-
                 component = var.getComponent();
                 innerPanel.add(component, "span, growx");
-
             } else {
                 // Regular variable component creation
                 component = var.getComponent();
-                //  data.indexOf(iterData);
                 innerPanel.add(component);
             }
-
-
         }
 
         return innerPanel;
     }
-
-
 
     private JPanel createIterationPanel() {
         JPanel panel = new JPanel(new BorderLayout());
@@ -198,7 +327,16 @@ public class N_ITER extends Variables {
     @Override
     public Variables initValueSet(String[] values) {
         setBinValue(StringHelper.TrimAR(values, getMaxSize()));
-        data.forEach(iterData -> iterData.forEach(var -> var.initValueSet(values)));
+
+        // Apply listeners to all existing iteration data
+        data.forEach(iterData ->
+                iterData.forEach(var -> {
+                    var.initValueSet(values);
+                    // Ensure listeners are applied after initialization
+                    applyChildListeners(var);
+                })
+        );
+
         return this;
     }
 
@@ -215,6 +353,8 @@ public class N_ITER extends Variables {
 
     public void setTemplate(ArrayList<Variables> template) {
         this.template = template;
+        // Apply listeners to all template variables
+        template.forEach(this::applyChildListeners);
     }
 
     public ArrayList<IterationData> getData() {
@@ -244,5 +384,31 @@ public class N_ITER extends Variables {
     public N_ITER setWRAPINT(int WRAPINT) {
         this.WRAPINT = WRAPINT;
         return this;
+    }
+
+    /**
+     * Gets the number of registered child listeners.
+     *
+     * @return the number of child listeners
+     */
+    public int getChildListenerCount() {
+        return childListeners.size();
+    }
+
+    /**
+     * Clears all child listeners from this N_ITER and all its child variables.
+     */
+    public void clearAllChildListeners() {
+        // Remove from template variables
+        template.forEach(var -> childListeners.forEach(listener ->
+                removeListenerRecursively(var, listener)));
+
+        // Remove from iteration data variables
+        data.forEach(iterData ->
+                iterData.forEach(var -> childListeners.forEach(listener ->
+                        removeListenerRecursively(var, listener)))
+        );
+
+        childListeners.clear();
     }
 }

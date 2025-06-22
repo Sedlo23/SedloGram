@@ -25,6 +25,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P80 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P80.class);
@@ -78,10 +80,9 @@ public class P80 extends Packet {
                 .addNewIterVar(new L_ACKMAMODE())
                 .addNewIterVar(new Q_MAMODE())
                 .initValueSet(d));
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-bursts-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     public Component getPacketComponent() {

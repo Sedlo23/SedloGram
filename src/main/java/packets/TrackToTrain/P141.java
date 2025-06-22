@@ -14,6 +14,8 @@ import tools.string.HTMLTagGenerator;
 import javax.swing.*;
 import java.awt.*;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P141 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P141.class);
@@ -39,9 +41,8 @@ public class P141 extends Packet {
         this.q_gdir = (Q_GDIR) new Q_GDIR().initValueSet(d);
         
         this.g_tsr = (G_TSR) new G_TSR().initValueSet(d);
-        
-        setIcon(GUIHelper.getImageIconFromResources("icons8-alps-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     public Component getPacketComponent() {

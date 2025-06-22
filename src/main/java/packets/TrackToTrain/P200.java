@@ -13,6 +13,8 @@ import tools.string.HTMLTagGenerator;
 import javax.swing.*;
 import java.awt.*;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P200 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P200.class);
@@ -39,10 +41,9 @@ public class P200 extends Packet {
         
 
         this.nid_vbcmk = (NID_VBCMK) new NID_VBCMK().initValueSet(d);
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-mark-view-as-hidden-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     @Override

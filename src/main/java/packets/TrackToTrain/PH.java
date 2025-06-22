@@ -21,6 +21,8 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class PH extends Packet {
 
     Q_UPDOWN        q_updown;
@@ -76,7 +78,9 @@ public class PH extends Packet {
         nid_c = (NID_C) new NID_C().initValueSet(d);
         nid_bg = (NID_BG) new NID_BG().initValueSet(d);
         q_link = (Q_LINK) new Q_LINK().initValueSet(d);
-        setIcon(GUIHelper.getImageIconFromResources("icons8-header-80"));
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+
+
 
     }
 

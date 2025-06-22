@@ -17,6 +17,8 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P46 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P46.class);
@@ -32,10 +34,9 @@ public class P46 extends Packet {
     }
 
     public P46(String[] d) {
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-transition-both-directions-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
 
         // Initialize fields
         this.nid_packet = (NID_PACKET) new NID_PACKET().initValueSet(d);

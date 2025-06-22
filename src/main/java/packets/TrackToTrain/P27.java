@@ -32,6 +32,7 @@ import java.awt.event.ActionListener;
 import java.util.*;
 
 import static tools.ui.GUIHelper.createModernTheme;
+import static tools.ui.GUIHelper.loadAndScaleIcon;
 
 public class P27 extends Packet {
 
@@ -108,8 +109,7 @@ public class P27 extends Packet {
                 ).setWRAPINT(3);
         this.n_iter2 = (N_ITER) this.n_iter2.initValueSet(d);
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-cruise-control-on-80"));
-
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
         // Chart creation
         dataset = new XYSeriesCollection();
         chart = ChartFactory.createXYLineChart(

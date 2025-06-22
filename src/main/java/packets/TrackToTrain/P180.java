@@ -16,6 +16,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P180 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P180.class);
@@ -41,10 +43,9 @@ public class P180 extends Packet {
         
 
         P3Variables.add((Q_LSSMA) new Q_LSSMA().initValueSet(d));
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-cruise-control-on-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     public Component getPacketComponent() {

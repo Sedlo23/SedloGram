@@ -3,12 +3,14 @@ package packets.TrackToTrain;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import packets.Interfaces.IterationData;
+import packets.Var.BinaryChangeListener;
 import packets.Var.D.*;
 import packets.Var.L.L_PACKET;
 import packets.Var.N.N_ITER;
 import packets.Var.NID.NID_BG;
 import packets.Var.NID.NID_PACKET;
 import packets.Var.Q.*;
+import packets.Var.Variables;
 import tools.crypto.ArithmeticalFunctions;
 import tools.packetgraph.CustomStrokeRenderer;
 import tools.ui.GUIHelper;
@@ -32,6 +34,7 @@ import java.awt.event.ActionListener;
 import java.util.Random;
 
 import static tools.ui.GUIHelper.createModernTheme;
+import static tools.ui.GUIHelper.loadAndScaleIcon;
 
 public class P5 extends Packet {
 
@@ -79,8 +82,28 @@ public class P5 extends Packet {
                 .addNewIterVar(new Q_LOCACC());
         this.n_iter = (N_ITER) this.n_iter.initValueSet(d);
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-link-80"));
-        
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+
+
+        // Create the listener that should be shared
+        BinaryChangeListener sharedListener = new BinaryChangeListener() {
+            @Override
+            public void onBinaryValueChanged(Variables source, String oldValue, String newValue) {
+                System.out.println("Binary changed to " + newValue + " in " + source.getName());
+                getBinData();
+                l_packet.jComboBoxRR.setSelectedIndex(getBinData().length());
+                l_packet.jComboBoxRR.updateUI();
+            }
+        };
+
+        // Add listener to main q_newcountry
+        this.q_newcountry.addBinaryChangeListener(sharedListener);
+
+        // Add the same listener to N_ITER so it propagates to all child Q_NEWCOUNTRY instances
+        this.n_iter.addChildListener(sharedListener);
+
+        // Also add listener to N_ITER itself for iteration count changes
+        this.n_iter.addBinaryChangeListener(sharedListener);
 
         dataset = new XYSeriesCollection();
         chart = ChartFactory.createXYLineChart(

@@ -32,11 +32,11 @@ import java.awt.*;
 import java.util.ArrayList;
 
 /**
- * A simple dockable panel used in the main dock of the application.
+ * A modern dockable panel used in the main dock of the application.
  * <p>
  * {@code SimplePanel} extends {@link BasePanel} and registers itself with the docking
- * framework. It supports basic options such as floating, closing, and minimizing.
- * It also provides a way to add extra options via a popup menu.
+ * framework. It supports basic options such as floating, closing, and minimizing
+ * with modern FlatLaf styling and improved visual appearance.
  */
 public class SimplePanel extends BasePanel {
 
@@ -46,9 +46,6 @@ public class SimplePanel extends BasePanel {
     /** The panel's icon. */
     private Icon icon;
 
-    /** A default color, currently not used beyond initialization. */
-    private final Color color = Color.BLACK;
-
     /** Text to display on the tab. */
     private String tabText = "";
 
@@ -57,7 +54,7 @@ public class SimplePanel extends BasePanel {
 
     /**
      * Constructs a new {@code SimplePanel} with the specified title, persistent ID, icon,
-     * and additional menu options.
+     * and additional menu options. Applies modern styling automatically.
      *
      * @param title         the title of the panel
      * @param persistentID  the persistent identifier used by the docking framework
@@ -67,7 +64,12 @@ public class SimplePanel extends BasePanel {
     public SimplePanel(String title, String persistentID, Icon icon, ArrayList<JMenu> jMenuItems) {
         super(title, persistentID, icon);
         this.icon = icon;
-        this.moreOptions = jMenuItems;
+        this.moreOptions = jMenuItems != null ? jMenuItems : new ArrayList<>();
+
+        // Apply modern styling
+        applyModernStyling();
+
+        // Register with docking framework
         Docking.registerDockable(this);
     }
 
@@ -81,6 +83,23 @@ public class SimplePanel extends BasePanel {
      */
     public SimplePanel(String title, String persistentID, Icon icon) {
         this(title, persistentID, icon, new ArrayList<>());
+    }
+
+    /**
+     * Applies modern styling to the panel.
+     */
+    private void applyModernStyling() {
+        // Modern background color
+        setBackground(UIManager.getColor("Panel.background"));
+
+        // Modern font
+        Font panelFont = UIManager.getFont("Panel.font");
+        if (panelFont != null) {
+            setFont(panelFont);
+        }
+
+        // Ensure proper opacity for modern look
+        setOpaque(true);
     }
 
     /**
@@ -103,12 +122,34 @@ public class SimplePanel extends BasePanel {
     }
 
     /**
-     * Sets the panel's title.
+     * Sets the panel's title and updates the display.
      *
      * @param title the new title
      */
+    @Override
     public void setTitle(String title) {
-        this.title = title;
+        super.setTitle(title);
+        // Trigger repaint for any listeners
+        firePropertyChange("title", null, title);
+    }
+
+    /**
+     * Gets the tab text for this panel.
+     *
+     * @return the tab text
+     */
+    public String getTabTextValue() {
+        return tabText.isEmpty() ? title : tabText;
+    }
+
+    /**
+     * Sets the tab text for this panel.
+     *
+     * @param tabText the new tab text
+     */
+    public void setTabText(String tabText) {
+        this.tabText = tabText;
+        firePropertyChange("tabText", null, tabText);
     }
 
     @Override
@@ -132,32 +173,53 @@ public class SimplePanel extends BasePanel {
     }
 
     /**
+     * Sets whether this panel should be limited to the root container.
+     *
+     * @param limitToRoot true to limit to root, false otherwise
+     */
+    public void setLimitToRoot(boolean limitToRoot) {
+        this.limitToRoot = limitToRoot;
+    }
+
+    /**
      * Sets additional options for this panel.
      *
      * @param options the menu items to add as extra options
      */
     public void setMoreOptions(ArrayList<JMenu> options) {
-        this.moreOptions = options;
+        this.moreOptions = options != null ? options : new ArrayList<>();
+    }
+
+    /**
+     * Gets the additional options for this panel.
+     *
+     * @return the list of additional menu options
+     */
+    public ArrayList<JMenu> getMoreOptions() {
+        return new ArrayList<>(moreOptions);
     }
 
     @Override
     public void addMoreOptions(JPopupMenu menu) {
-        for (JMenu item : moreOptions) {
-            menu.add(item);
+        if (!moreOptions.isEmpty()) {
+            menu.addSeparator();
+            for (JMenu item : moreOptions) {
+                menu.add(item);
+            }
         }
     }
 
     @Override
     public void setBorder(Border border) {
-        // Optionally, set a custom border.
-        // super.setBorder(BorderFactory.createBevelBorder(BevelBorder.RAISED));
+        // Allow custom borders while maintaining modern appearance
+        super.setBorder(border);
     }
 
     /**
-     * Creates the custom header UI for this dockable panel.
+     * Creates the custom header UI for this dockable panel with modern styling.
      * <p>
-     * This implementation returns a {@link HeaderCustomUI} that overrides the background
-     * to use the default panel background.
+     * This implementation returns a {@link HeaderCustomUI} that uses system colors
+     * and modern typography for a consistent look and feel.
      *
      * @param headerController the header controller for dock actions
      * @param headerModel      the header model containing display data
@@ -165,13 +227,48 @@ public class SimplePanel extends BasePanel {
      */
     @Override
     public DockingHeaderUI createHeaderUI(HeaderController headerController, HeaderModel headerModel) {
-        HeaderCustomUI headerUI = new HeaderCustomUI(headerController, headerModel) {
+        return new HeaderCustomUI(headerController, headerModel) {
             @Override
             public void setBackground(Color bg) {
-                // Use the default background color from a new panel as a fallback.
-                super.setBackground(new JPanel().getBackground());
+                // Use system background color for consistency
+                Color systemBg = UIManager.getColor("Panel.background");
+
+
+
+                if (systemBg != null) {
+                    super.setBackground(systemBg);
+                } else {
+                    super.setBackground(bg);
+                }
             }
+
+
+
         };
-        return headerUI;
+    }
+
+    /**
+     * Updates the panel's appearance when the look and feel changes.
+     */
+    public void updateLookAndFeel() {
+        applyModernStyling();
+        SwingUtilities.updateComponentTreeUI(this);
+        repaint();
+    }
+
+    @Override
+    public Icon getIcon() {
+        return icon;
+    }
+
+    /**
+     * Sets the icon for this panel.
+     *
+     * @param icon the new icon
+     */
+    public void setIcon(Icon icon) {
+        Icon oldIcon = this.icon;
+        this.icon = icon;
+        firePropertyChange("icon", oldIcon, icon);
     }
 }

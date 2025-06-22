@@ -20,6 +20,8 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P41 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P41.class);
@@ -69,8 +71,7 @@ public class P41 extends Packet {
         this.n_iter = (N_ITER) this.n_iter.initValueSet(d);
         this.n_iter.setWRAPINT(2);
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-transition-both-directions-80"));
-        
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     @Override

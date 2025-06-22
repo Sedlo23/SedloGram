@@ -23,6 +23,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P72_11 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P72_11.class);
@@ -38,8 +40,7 @@ public class P72_11 extends Packet {
     public P72_11(String[] data) {
         
         P3Variables = initializeVariables(data);
-        setIcon(GUIHelper.getImageIconFromResources("icons8-txt-80"));
-        
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     private ArrayList<Variables> initializeVariables(String[] data) {

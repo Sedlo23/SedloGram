@@ -14,6 +14,8 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P181 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P181.class);
@@ -33,9 +35,8 @@ public class P181 extends Packet {
         this.q_dir = (Q_DIR) new Q_DIR().initValueSet(d);
         
         this.l_packet = (L_PACKET) new L_PACKET().initValueSet(d);
-        
-        setIcon(GUIHelper.getImageIconFromResources("icons8-cruise-control-on-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     public Component getPacketComponent() {

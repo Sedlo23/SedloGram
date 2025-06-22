@@ -33,6 +33,8 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 /**
  * The P3_11 packet represents a specific type of packet containing multiple
  * variable fields. Instead of storing these fields in an array, each variable
@@ -156,10 +158,9 @@ public class P3_11 extends Packet {
         
 
         q_nvdriver_adhes = (Q_NVDRIVER_ADHES) new Q_NVDRIVER_ADHES().initValueSet(d);
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-registry-editor-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     /**

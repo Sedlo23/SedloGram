@@ -14,7 +14,9 @@ import java.awt.event.ActionListener;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.IntStream;
 
 import static tools.ui.GUIHelper.addLabel;
@@ -59,6 +61,9 @@ public class Variables implements IVariable {
     /** Cache for UI components keyed by string. */
     private final Map<String, Component> componentCache = new HashMap<>();
 
+    /** List of binary change listeners. Using CopyOnWriteArrayList for thread safety. */
+    private final List<BinaryChangeListener> binaryChangeListeners = new CopyOnWriteArrayList<>();
+
     /**
      * Constructs a Variables instance with the specified name, maximum size, and description.
      *
@@ -67,17 +72,61 @@ public class Variables implements IVariable {
      * @param description a textual description of the variable
      */
     public Variables(String name, int maxSize, String description) {
-        
         this.name = name;
         this.maxSize = maxSize;
         this.description = description;
         this.binValue = "0";
     }
 
+    /**
+     * Adds a binary change listener.
+     *
+     * @param listener the listener to add
+     */
+    public void addBinaryChangeListener(BinaryChangeListener listener) {
+        if (listener != null) {
+            binaryChangeListeners.add(listener);
+        }
+    }
+
+    /**
+     * Removes a binary change listener.
+     *
+     * @param listener the listener to remove
+     * @return true if the listener was removed, false otherwise
+     */
+    public boolean removeBinaryChangeListener(BinaryChangeListener listener) {
+        return binaryChangeListeners.remove(listener);
+    }
+
+    /**
+     * Removes all binary change listeners.
+     */
+    public void clearBinaryChangeListeners() {
+        binaryChangeListeners.clear();
+    }
+
+    /**
+     * Notifies all registered listeners about a binary value change.
+     *
+     * @param oldValue the previous binary value
+     * @param newValue the new binary value
+     */
+    protected void notifyBinaryChangeListeners(String oldValue, String newValue) {
+        if (!oldValue.equals(newValue)) {
+            for (BinaryChangeListener listener : binaryChangeListeners) {
+                try {
+                    listener.onBinaryValueChanged(this, oldValue, newValue);
+                } catch (Exception e) {
+                    LOG.error("Error in binary change listener", e);
+                }
+            }
+        }
+    }
+
     @Override
     public String getName() {
         String varName = name + " (" + getMaxSize()+") ";
-        
         return varName;
     }
 
@@ -88,14 +137,12 @@ public class Variables implements IVariable {
      * @return this Variables instance for chaining
      */
     public Variables setName(String name) {
-        
         this.name = name;
         return this;
     }
 
     @Override
     public int getMaxSize() {
-        
         return maxSize;
     }
 
@@ -105,46 +152,45 @@ public class Variables implements IVariable {
      * @param maxSize the maximum bit-length
      */
     public void setMaxSize(int maxSize) {
-        
         this.maxSize = maxSize;
     }
 
     @Override
     public String getDescription() {
-        
         return description;
     }
 
     @Override
     public String getBinValue() {
         String padded = StringHelper.padLeft(binValue, getMaxSize(), '0');
-        
         return padded;
     }
 
     /**
-     * Sets the binary value.
+     * Sets the binary value and notifies listeners of the change.
      *
      * @param binValue the new binary string value
      */
     public void setBinValue(String binValue) {
-        
+        String oldValue = this.binValue;
+
         if (binValue.length() > maxSize) {
-            
             try {
                 throw new Exception("MaxBin reached");
             } catch (Exception e) {
-                
                 e.printStackTrace();
             }
         }
+
         this.binValue = binValue;
+
+        // Notify listeners of the change
+        notifyBinaryChangeListeners(oldValue, binValue);
     }
 
     @Override
     public int getDecValue() {
         int value = (int) ArithmeticalFunctions.bin2Dec(getBinValue());
-        
         return value;
     }
 
@@ -154,7 +200,6 @@ public class Variables implements IVariable {
      * @return a new Variables object with the same binary value and condition settings, or null on error.
      */
     public Variables deepCopy() {
-        
         try {
             Class<?> clazz = Class.forName(this.getClass().getName());
             Constructor<?> cons = clazz.getConstructor();
@@ -164,11 +209,9 @@ public class Variables implements IVariable {
                 if (cond != null) {
                     copy.setCond(cond, var);
                 }
-                
                 return copy;
             }
         } catch (Exception e) {
-            
             e.printStackTrace();
         }
         return null;
@@ -192,8 +235,6 @@ public class Variables implements IVariable {
      * @return the constructed component
      */
     public Component getComponent(String comment) {
-        
-
         // Generate combo box items (all possible decimal values up to 2^maxSize)
         ArrayList<String> comboItems = getCombo();
         DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>(comboItems.toArray(new String[0]));
@@ -240,13 +281,11 @@ public class Variables implements IVariable {
      * @return this Variables instance, updated if the condition is met
      */
     public Variables initValueSet(String[] s) {
-        
         if (cond != null && cond.getDecValue() != var) {
-            
             return this;
         }
         String trimmed = StringHelper.TrimAR(s, getMaxSize());
-        setBinValue(trimmed);
+        setBinValue(trimmed); // This will trigger the listeners
         return this;
     }
 
@@ -257,11 +296,9 @@ public class Variables implements IVariable {
      */
     public String getFullData() {
         if (cond != null && cond.getDecValue() != var) {
-            
             return "";
         }
         String binVal = getBinValue();
-        
         return binVal;
     }
 
@@ -273,7 +310,6 @@ public class Variables implements IVariable {
      * @return this Variables instance for chaining
      */
     public Variables setCond(Variables cond, int i) {
-        
         this.cond = cond;
         this.var = i;
         return this;
@@ -286,7 +322,6 @@ public class Variables implements IVariable {
      * @return an ArrayList of possible values as Strings
      */
     public ArrayList<String> getCombo() {
-        
         ArrayList<String> values = new ArrayList<>();
         int upperBound = (int) Math.pow(2, getMaxSize());
         IntStream.range(0, upperBound).forEach(n -> values.add(String.valueOf(n)));
@@ -296,11 +331,9 @@ public class Variables implements IVariable {
     @Override
     public String getSimpleView() {
         if (cond != null && cond.getDecValue() != var) {
-            
             return "";
         }
         String simpleView = getName() + "=" + getDecValue() + "\n";
-        
         return simpleView;
     }
 
@@ -310,7 +343,6 @@ public class Variables implements IVariable {
      * @return a string from the generated combo list corresponding to the decimal value.
      */
     public String getStringMeaning() {
-        
         return getCombo().get(getDecValue());
     }
 
@@ -321,7 +353,6 @@ public class Variables implements IVariable {
      * @return the cached component, or null if not cached
      */
     public Component getCachedComponent(String key) {
-        
         return componentCache.get(key);
     }
 
@@ -332,9 +363,6 @@ public class Variables implements IVariable {
      * @param component the component to cache
      */
     public void cacheComponent(String key, Component component) {
-        
         componentCache.put(key, component);
     }
-
-
 }

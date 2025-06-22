@@ -35,6 +35,7 @@ import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 
 import static tools.ui.GUIHelper.createModernTheme;
+import static tools.ui.GUIHelper.loadAndScaleIcon;
 
 public class P65 extends Packet {
 
@@ -65,8 +66,7 @@ public class P65 extends Packet {
         P3Variables.add(new Q_FRONT().initValueSet(d));
         P3Variables.add(new V_TSR().initValueSet(d));
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-restriction-80"));
-        
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
 
         dataset = new XYSeriesCollection();
         chart = ChartFactory.createXYLineChart(

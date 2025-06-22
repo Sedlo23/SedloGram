@@ -13,6 +13,8 @@ import tools.string.HTMLTagGenerator;
 import javax.swing.*;
 import java.awt.*;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P137 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P137.class);
@@ -35,9 +37,8 @@ public class P137 extends Packet {
         this.l_packet = (L_PACKET) new L_PACKET().initValueSet(d);
         
         this.q_srstop = (Q_SRSTOP) new Q_SRSTOP().initValueSet(d);
-        
-        setIcon(GUIHelper.getImageIconFromResources("icons8-high-priority-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     public Component getPacketComponent() {

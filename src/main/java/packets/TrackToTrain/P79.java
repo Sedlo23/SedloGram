@@ -22,6 +22,8 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P79 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P79.class);
@@ -79,10 +81,9 @@ public class P79 extends Packet {
                 .addNewIterVar(new Q_MPOSITION())
                 .addNewIterVar(new M_POSTION());
         this.n_iter = (N_ITER) this.n_iter.initValueSet(d);
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-map-pinpoint-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     public Component getPacketComponent() {

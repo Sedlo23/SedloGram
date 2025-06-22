@@ -13,6 +13,8 @@ import tools.ui.GUIHelper;
 import javax.swing.*;
 import java.awt.*;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 /**
  * The P2 packet encapsulates specific fields (NID_PACKET, Q_DIR, L_PACKET, M_VERSION)
  * and provides methods for obtaining binary and hexadecimal representations as well as
@@ -52,10 +54,9 @@ public class P2 extends Packet {
         
 
         this.m_version = (M_VERSION) new M_VERSION().initValueSet(d);
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-version-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
 
     }
 

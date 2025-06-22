@@ -33,6 +33,7 @@ import java.awt.event.ActionListener;
 import java.util.Collections;
 
 import static tools.ui.GUIHelper.createModernTheme;
+import static tools.ui.GUIHelper.loadAndScaleIcon;
 
 public class P21 extends Packet {
 
@@ -83,10 +84,9 @@ public class P21 extends Packet {
                 .addNewIterVar(new Q_GDIR())
                 .addNewIterVar(new G_A());
         this.n_iter.initValueSet(d);
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-alps-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
 
         dataset = new XYSeriesCollection();
         chart = ChartFactory.createXYLineChart(

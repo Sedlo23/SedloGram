@@ -26,6 +26,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P203 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P203.class);
@@ -74,10 +76,9 @@ public class P203 extends Packet {
         
 
         P3Variables.add((Q_NVKINT) new Q_NVKINT().initValueSet(d));
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-registry-editor-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     @Override

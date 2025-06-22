@@ -399,7 +399,8 @@ public class InputJCombobox extends PlainDocument {
             int textHeight = 16;
 
             // Function to load and scale an image
-            java.util.function.Function<String, ImageIcon> loadAndScaleIcon = (path) -> {
+            java.util.function.Function<String, ImageIcon> loadAndScaleIcon = (path) ->
+            {
                 ImageIcon originalIcon = new ImageIcon(GUIHelper.class.getClassLoader().getResource(path));
                 Image originalImage = originalIcon.getImage();
 

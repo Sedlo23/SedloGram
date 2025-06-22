@@ -1,6 +1,7 @@
 package UI.Main;
 
 import ModernDocking.*;
+import ModernDocking.internal.DockableToolbar;
 import ModernDocking.layouts.ApplicationLayout;
 import ModernDocking.layouts.DockingLayouts;
 import ModernDocking.layouts.WindowLayoutBuilder;
@@ -8,6 +9,8 @@ import ModernDocking.persist.AppState;
 import ModernDocking.ui.DockableMenuItem;
 import UI.Builders.DockPanelBuilder;
 import UI.Builders.MenuBarBuilder;
+import UI.DockingPanes.ComponentDebugger;
+import UI.DockingPanes.RootDockingPanelCustom;
 import UI.DockingPanes.SimplePanel;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.IntelliJTheme;
@@ -57,6 +60,7 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setupFrame();
         setVisible(true);
+
     }
 
     /**
@@ -158,7 +162,7 @@ public class MainFrame extends JFrame {
     private void setupFrame() {
         setSize(800, 600);
         Docking.initialize(this);
-        RootDockingPanel dockingPanel = new RootDockingPanel (this);
+        RootDockingPanelCustom dockingPanel = new RootDockingPanelCustom(this);
 
         MenuBarBuilder menuBarBuilder = new MenuBarBuilder(this);
         JMenuBar menuBar = menuBarBuilder.buildMenuBar();

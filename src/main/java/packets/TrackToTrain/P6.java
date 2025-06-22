@@ -15,6 +15,8 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import static tools.ui.GUIHelper.loadAndScaleIcon;
+
 public class P6 extends Packet {
 
     private static final Logger LOG = LogManager.getLogger(P6.class);
@@ -41,10 +43,9 @@ public class P6 extends Packet {
         
 
         this.q_vbco = (Q_VBCO) new Q_VBCO().initValueSet(d);
-        
 
-        setIcon(GUIHelper.getImageIconFromResources("icons8-mark-view-as-hidden-80"));
-        
+
+        setIcon(loadAndScaleIcon("flags/pac/header.png"));
     }
 
     @Override
