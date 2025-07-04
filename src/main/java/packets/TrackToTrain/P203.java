@@ -78,7 +78,7 @@ public class P203 extends Packet {
         P3Variables.add((Q_NVKINT) new Q_NVKINT().initValueSet(d));
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/citizenship.png"));
     }
 
     @Override

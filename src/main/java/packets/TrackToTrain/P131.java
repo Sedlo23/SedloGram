@@ -68,7 +68,7 @@ public class P131 extends Packet {
         this.q_sleepsession = (Q_SLEEPSESSION) new Q_SLEEPSESSION().initValueSet(d);
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/icons8-error-globe-64.png"));
     }
 
     public Component getPacketComponent() {

@@ -218,7 +218,7 @@ public class P3 extends Packet {
         q_nvkint         = (Q_NVKINT) new Q_NVKINT().initValueSet(d);
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/citizenship.png"));
     }
 
     @Override

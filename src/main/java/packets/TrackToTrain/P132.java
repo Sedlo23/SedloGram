@@ -48,7 +48,7 @@ public class P132 extends Packet {
         this.q_srstop = (Q_ASPECT) new Q_ASPECT().initValueSet(d);
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/icons8-error-globe-64.png"));
     }
 
     public Component getPacketComponent() {

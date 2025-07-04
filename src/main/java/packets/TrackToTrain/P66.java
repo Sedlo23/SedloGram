@@ -39,7 +39,7 @@ public class P66 extends Packet {
         P3Variables.add((L_PACKET) new L_PACKET().initValueSet(d));
         P3Variables.add((NID_TSR) new NID_TSR().initValueSet(d));
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/icons8-restrict-50.png"));
     }
 
     @Override

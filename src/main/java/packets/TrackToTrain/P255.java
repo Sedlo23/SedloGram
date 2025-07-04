@@ -26,7 +26,7 @@ public class P255 extends Packet {
         
         this.nid_packet = (NID_PACKET) new NID_PACKET().initValueSet(d);
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/flag.png"));
     }
 
     public Component getPacketComponent() {

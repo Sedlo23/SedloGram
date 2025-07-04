@@ -33,7 +33,7 @@ public class P45 extends Packet {
     public P45(String[] d) {
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/train.png"));
 
         this.nid_packet = (NID_PACKET) new NID_PACKET().initValueSet(d);
         

@@ -36,7 +36,7 @@ public class P181 extends Packet {
         
         this.l_packet = (L_PACKET) new L_PACKET().initValueSet(d);
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/LSSMA.png"));
     }
 
     public Component getPacketComponent() {

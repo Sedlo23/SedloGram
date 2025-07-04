@@ -83,7 +83,7 @@ public class VirtualLogListAppender extends AbstractAppender {
 
             iconLabel = new JLabel();
             iconLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12)); // Smaller icon
-            iconLabel.setPreferredSize(new Dimension(16, 16));
+            iconLabel.setPreferredSize(new Dimension(20, 20));
             iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
             levelLabel = new JLabel();

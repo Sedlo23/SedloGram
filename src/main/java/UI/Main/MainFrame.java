@@ -16,6 +16,7 @@ import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.IntelliJTheme;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ScanResult;
+import tools.ui.GUIHelper;
 
 import javax.swing.*;
 import java.awt.*;
@@ -33,9 +34,7 @@ import java.util.prefs.Preferences;
  * It also triggers a simulated mouse click at startup to ensure focus.
  */
 public class MainFrame extends JFrame {
-
     private static final long serialVersionUID = -5570653778104813836L;
-
     public static SimplePanel zdrojDock;
     public static SimplePanel editDock;
     public static SimplePanel telegDock;
@@ -46,7 +45,6 @@ public class MainFrame extends JFrame {
     public static SimplePanel mapDock;
     public static SimplePanel navodDock;
     public static JTextArea textArea;
-
     static Preferences prefs = Preferences.userNodeForPackage(MainFrame.class);
     // Preference key name for theme
     static final String PREF_NAME = "themeABCDEF";
@@ -60,6 +58,7 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setupFrame();
         setVisible(true);
+        setIconImage(GUIHelper.loadAndScaleIcon("flags/android-chrome-512x512.png").getImage());
 
     }
 

@@ -34,7 +34,7 @@ public class P254 extends Packet {
         
         this.l_packet = (L_PACKET) new L_PACKET().initValueSet(d);
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/icons8-error-globe-64.png"));
     }
 
     public Component getPacketComponent() {

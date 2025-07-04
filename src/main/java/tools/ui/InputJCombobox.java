@@ -568,12 +568,26 @@ public class InputJCombobox extends PlainDocument {
 
             countryFlags.put("LS", loadAndScaleIcon.apply("flags/ls.png"));
 
-            countryFlags.put("1x BG", loadAndScaleIcon.apply("flags/1.png"));
-            countryFlags.put("2x BG", loadAndScaleIcon.apply("flags/2.png"));
-            countryFlags.put("3x BG", loadAndScaleIcon.apply("flags/3.png"));
+            countryFlags.put("1x BG", loadAndScaleIcon.apply("flags/posb/11.png"));
+            countryFlags.put("2x BG", loadAndScaleIcon.apply("flags/posb/12.png"));
+            countryFlags.put("3x BG", loadAndScaleIcon.apply("flags/posb/13.png"));
+            countryFlags.put("4x BG", loadAndScaleIcon.apply("flags/posb/14.png"));
+            countryFlags.put("5x BG", loadAndScaleIcon.apply("flags/posb/15.png"));
+            countryFlags.put("6x BG", loadAndScaleIcon.apply("flags/posb/16.png"));
+            countryFlags.put("7x BG", loadAndScaleIcon.apply("flags/posb/17.png"));
+            countryFlags.put("8x BG", loadAndScaleIcon.apply("flags/posb/18.png"));
+
+            countryFlags.put("1.", loadAndScaleIcon.apply("flags/posb/1.png"));
+            countryFlags.put("2.", loadAndScaleIcon.apply("flags/posb/2.png"));
+            countryFlags.put("3.", loadAndScaleIcon.apply("flags/posb/3.png"));
+            countryFlags.put("4.", loadAndScaleIcon.apply("flags/posb/4.png"));
+            countryFlags.put("5.", loadAndScaleIcon.apply("flags/posb/5.png"));
+            countryFlags.put("6.", loadAndScaleIcon.apply("flags/posb/6.png"));
+            countryFlags.put("7.", loadAndScaleIcon.apply("flags/posb/7.png"));
+            countryFlags.put("8.", loadAndScaleIcon.apply("flags/posb/8.png"));
 
 
-            countryFlags.put("Balíza", loadAndScaleIcon.apply("flags/bal.png"));
+            countryFlags.put("Balíza", loadAndScaleIcon.apply("flags/posb/1.png"));
 
             countryFlags.put("Čelo", loadAndScaleIcon.apply("flags/vlakcelo.png"));
             countryFlags.put("Konec", loadAndScaleIcon.apply("flags/vlakend.png"));

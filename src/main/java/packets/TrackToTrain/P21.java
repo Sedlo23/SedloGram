@@ -86,7 +86,7 @@ public class P21 extends Packet {
         this.n_iter.initValueSet(d);
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/icons8-mountain-50.png"));
 
         dataset = new XYSeriesCollection();
         chart = ChartFactory.createXYLineChart(

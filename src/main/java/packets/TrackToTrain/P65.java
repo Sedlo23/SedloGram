@@ -66,7 +66,7 @@ public class P65 extends Packet {
         P3Variables.add(new Q_FRONT().initValueSet(d));
         P3Variables.add(new V_TSR().initValueSet(d));
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/icons8-restrict-50.png"));
 
         dataset = new XYSeriesCollection();
         chart = ChartFactory.createXYLineChart(

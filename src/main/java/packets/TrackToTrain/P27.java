@@ -109,7 +109,7 @@ public class P27 extends Packet {
                 ).setWRAPINT(3);
         this.n_iter2 = (N_ITER) this.n_iter2.initValueSet(d);
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/icons8-graph-50.png"));
         // Chart creation
         dataset = new XYSeriesCollection();
         chart = ChartFactory.createXYLineChart(

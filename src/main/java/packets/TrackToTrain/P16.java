@@ -39,7 +39,7 @@ public class P16 extends Packet {
         P3Variables.add((Q_SCALE) new Q_SCALE().initValueSet(d));
         P3Variables.add((L_SECTION) new L_SECTION().initValueSet(d));
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/icons8-skip-50.png"));
     }
 
     @Override

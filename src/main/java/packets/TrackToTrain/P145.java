@@ -34,7 +34,7 @@ public class P145 extends Packet {
         
         this.l_packet = (L_PACKET) new L_PACKET().initValueSet(d);
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/reflection.png"));
     }
 
     public Component getPacketComponent() {

@@ -42,7 +42,7 @@ public class P141 extends Packet {
         
         this.g_tsr = (G_TSR) new G_TSR().initValueSet(d);
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/icons8-mountain-50.png"));
     }
 
     public Component getPacketComponent() {

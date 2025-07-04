@@ -108,7 +108,7 @@ public class P12 extends Packet {
         this.q_overlap = (Q_OVERLAP) new Q_OVERLAP().initValueSet(d);
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/marcher.png"));
 
         dataset = new XYSeriesCollection();
 

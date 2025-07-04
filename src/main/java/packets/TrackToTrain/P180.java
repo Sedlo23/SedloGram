@@ -45,7 +45,7 @@ public class P180 extends Packet {
         P3Variables.add((Q_LSSMA) new Q_LSSMA().initValueSet(d));
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/LSSMA.png"));
     }
 
     public Component getPacketComponent() {

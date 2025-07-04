@@ -45,7 +45,7 @@ public class P6 extends Packet {
         this.q_vbco = (Q_VBCO) new Q_VBCO().initValueSet(d);
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/box.png"));
     }
 
     @Override

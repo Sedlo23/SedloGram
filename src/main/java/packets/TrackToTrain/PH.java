@@ -98,8 +98,8 @@ public class PH extends Packet {
         jPanel1.add(    m_version   .getComponent()     );
         jPanel1.add(    q_media     .getComponent()     );
         jPanel1.add(    n_pig       .getComponent()     );
-        jPanel1.add(    n_total     .getComponent()     );
         jPanel1.add(    m_dup       .getComponent()     );
+        jPanel1.add(    n_total     .getComponent()     );
         jPanel1.add(    m_mcount    .getComponent()     );
         jPanel1.add(    nid_c       .getComponent()     );
         jPanel1.add(    nid_bg      .getComponent()     );

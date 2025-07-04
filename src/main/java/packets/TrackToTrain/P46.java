@@ -36,7 +36,7 @@ public class P46 extends Packet {
     public P46(String[] d) {
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/icons8-table-50.png"));
 
         // Initialize fields
         this.nid_packet = (NID_PACKET) new NID_PACKET().initValueSet(d);

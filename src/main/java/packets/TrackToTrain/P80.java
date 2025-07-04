@@ -82,7 +82,7 @@ public class P80 extends Packet {
                 .initValueSet(d));
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/icons8-mode-67.png"));
     }
 
     public Component getPacketComponent() {

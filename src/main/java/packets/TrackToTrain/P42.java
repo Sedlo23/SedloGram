@@ -67,7 +67,7 @@ public class P42 extends Packet {
         this.q_sleepsession = (Q_SLEEPSESSION) new Q_SLEEPSESSION().initValueSet(d);
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/icons8-radio-station-50.png"));
     }
 
     @Override

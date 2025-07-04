@@ -82,7 +82,7 @@ public class P5 extends Packet {
                 .addNewIterVar(new Q_LOCACC());
         this.n_iter = (N_ITER) this.n_iter.initValueSet(d);
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/link.png"));
 
 
         // Create the listener that should be shared

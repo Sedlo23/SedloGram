@@ -56,7 +56,8 @@ public class P88 extends Packet {
         P3Variables.add((Q_LXSTATUS) new Q_LXSTATUS().initValueSet(d));
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/barrier.png"));
+
     }
 
     public Component getPacketComponent() {

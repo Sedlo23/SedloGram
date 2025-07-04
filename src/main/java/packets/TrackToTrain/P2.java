@@ -56,7 +56,7 @@ public class P2 extends Packet {
         this.m_version = (M_VERSION) new M_VERSION().initValueSet(d);
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/version-control.png"));
 
     }
 

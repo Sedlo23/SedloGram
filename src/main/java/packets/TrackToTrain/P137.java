@@ -38,7 +38,7 @@ public class P137 extends Packet {
         
         this.q_srstop = (Q_SRSTOP) new Q_SRSTOP().initValueSet(d);
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/icons8-error-globe-64.png"));
     }
 
     public Component getPacketComponent() {

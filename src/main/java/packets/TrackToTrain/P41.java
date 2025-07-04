@@ -71,7 +71,7 @@ public class P41 extends Packet {
         this.n_iter = (N_ITER) this.n_iter.initValueSet(d);
         this.n_iter.setWRAPINT(2);
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/icons8-change-50.png"));
     }
 
     @Override

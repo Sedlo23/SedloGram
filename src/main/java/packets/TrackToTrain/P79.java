@@ -83,7 +83,7 @@ public class P79 extends Packet {
         this.n_iter = (N_ITER) this.n_iter.initValueSet(d);
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/location-sign.png"));
     }
 
     public Component getPacketComponent() {

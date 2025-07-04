@@ -669,33 +669,33 @@ public class GUIHelper {
                         case 131 -> defaultListModel.addElement(new P131(ss));
                         case 132 -> defaultListModel.addElement(new P132(ss));
                         case 137 -> defaultListModel.addElement(new P137(ss));
-                        case 0 -> defaultListModel.addElement(new P0(ss));
-                        case 2 -> defaultListModel.addElement(new P2(ss));
-                        case 3 -> defaultListModel.addElement(new P3_11(ss));
-                        case 5 -> defaultListModel.addElement(new P5(ss));
-                        case 41 -> defaultListModel.addElement(new P41(ss));
-                        case 42 -> defaultListModel.addElement(new P42(ss));
-                        case 45 -> defaultListModel.addElement(new P45(ss));
-                        case 12 -> defaultListModel.addElement(new P12(ss));
-                        case 27 -> defaultListModel.addElement(new P27(ss));
-                        case 79 -> defaultListModel.addElement(new P79_11(ss));
-                        case 21 -> defaultListModel.addElement(new P21(ss));
-                        case 46 -> defaultListModel.addElement(new P46(ss));
+                        case 0   -> defaultListModel.addElement(new P0(ss));
+                        case 2   -> defaultListModel.addElement(new P2(ss));
+                        case 3   -> defaultListModel.addElement(new P3_11(ss));
+                        case 5   -> defaultListModel.addElement(new P5(ss));
+                        case 41  -> defaultListModel.addElement(new P41(ss));
+                        case 42  -> defaultListModel.addElement(new P42(ss));
+                        case 45  -> defaultListModel.addElement(new P45(ss));
+                        case 12  -> defaultListModel.addElement(new P12(ss));
+                        case 27  -> defaultListModel.addElement(new P27(ss));
+                        case 79  -> defaultListModel.addElement(new P79_11(ss));
+                        case 21  -> defaultListModel.addElement(new P21(ss));
+                        case 46  -> defaultListModel.addElement(new P46(ss));
                         case 180 -> defaultListModel.addElement(new P180(ss));
                         case 135 -> defaultListModel.addElement(new P135(ss));
                         case 145 -> defaultListModel.addElement(new P145(ss));
                         case 181 -> defaultListModel.addElement(new P181(ss));
                         case 203 -> defaultListModel.addElement(new P203(ss));
-                        case 16 -> defaultListModel.addElement(new P16(ss));
-                        case 65 -> defaultListModel.addElement(new P65(ss));
+                        case 16  -> defaultListModel.addElement(new P16(ss));
+                        case 65  -> defaultListModel.addElement(new P65(ss));
                         case 141 -> defaultListModel.addElement(new P141(ss));
-                        case 66 -> defaultListModel.addElement(new P66(ss));
+                        case 66  -> defaultListModel.addElement(new P66(ss));
                         case 254 -> defaultListModel.addElement(new P254(ss));
                         case 200 -> defaultListModel.addElement(new P200(ss));
-                        case 72 -> defaultListModel.addElement(new P72_11(ss));
-                        case 6 -> defaultListModel.addElement(new P6(ss));
-                        case 80 -> defaultListModel.addElement(new P80(ss));
-                        case 67 -> defaultListModel.addElement(new P67(ss));
+                        case 72  -> defaultListModel.addElement(new P72_11(ss));
+                        case 6   -> defaultListModel.addElement(new P6(ss));
+                        case 80  -> defaultListModel.addElement(new P80(ss));
+                        case 67  -> defaultListModel.addElement(new P67(ss));
                         case 255 -> {
                             defaultListModel.addElement(new P255(ss));
                             keepParsing = false;
@@ -716,35 +716,35 @@ public class GUIHelper {
                     long packetId = ArithmeticalFunctions.bin2Dec(ss[0].substring(0, 8));
                     switch ((int) packetId) {
                         case 131 -> defaultListModel.addElement(new P131(ss));
-                        case 0 -> defaultListModel.addElement(new P0(ss));
+                        case 0   -> defaultListModel.addElement(new P0(ss));
                         case 132 -> defaultListModel.addElement(new P132(ss));
                         case 137 -> defaultListModel.addElement(new P137(ss));
-                        case 80 -> defaultListModel.addElement(new P80(ss));
-                        case 2 -> defaultListModel.addElement(new P2(ss));
+                        case 80  -> defaultListModel.addElement(new P80(ss));
+                        case 2   -> defaultListModel.addElement(new P2(ss));
                         case 141 -> defaultListModel.addElement(new P141(ss));
-                        case 3 -> defaultListModel.addElement(new P3(ss));
-                        case 5 -> defaultListModel.addElement(new P5(ss));
-                        case 6 -> defaultListModel.addElement(new P6(ss));
-                        case 41 -> defaultListModel.addElement(new P41(ss));
-                        case 42 -> defaultListModel.addElement(new P42(ss));
-                        case 45 -> defaultListModel.addElement(new P45(ss));
-                        case 12 -> defaultListModel.addElement(new P12(ss));
-                        case 67 -> defaultListModel.addElement(new P67(ss));
-                        case 68 -> defaultListModel.addElement(new P68(ss));
-                        case 27 -> defaultListModel.addElement(new P27(ss));
-                        case 79 -> defaultListModel.addElement(new P79(ss));
-                        case 21 -> defaultListModel.addElement(new P21(ss));
-                        case 46 -> defaultListModel.addElement(new P46(ss));
+                        case 3   -> defaultListModel.addElement(new P3(ss));
+                        case 5   -> defaultListModel.addElement(new P5(ss));
+                        case 6   -> defaultListModel.addElement(new P6(ss));
+                        case 41  -> defaultListModel.addElement(new P41(ss));
+                        case 42  -> defaultListModel.addElement(new P42(ss));
+                        case 45  -> defaultListModel.addElement(new P45(ss));
+                        case 12  -> defaultListModel.addElement(new P12(ss));
+                        case 67  -> defaultListModel.addElement(new P67(ss));
+                        case 68  -> defaultListModel.addElement(new P68(ss));
+                        case 27  -> defaultListModel.addElement(new P27(ss));
+                        case 79  -> defaultListModel.addElement(new P79(ss));
+                        case 21  -> defaultListModel.addElement(new P21(ss));
+                        case 46  -> defaultListModel.addElement(new P46(ss));
                         case 180 -> defaultListModel.addElement(new P180(ss));
                         case 135 -> defaultListModel.addElement(new P135(ss));
                         case 145 -> defaultListModel.addElement(new P145(ss));
                         case 181 -> defaultListModel.addElement(new P181(ss));
                         case 254 -> defaultListModel.addElement(new P254(ss));
-                        case 65 -> defaultListModel.addElement(new P65(ss));
-                        case 66 -> defaultListModel.addElement(new P66(ss));
-                        case 16 -> defaultListModel.addElement(new P16(ss));
-                        case 72 -> defaultListModel.addElement(new P72(ss));
-                        case 88 -> defaultListModel.addElement(new P88(ss));
+                        case 65  -> defaultListModel.addElement(new P65(ss));
+                        case 66  -> defaultListModel.addElement(new P66(ss));
+                        case 16  -> defaultListModel.addElement(new P16(ss));
+                        case 72  -> defaultListModel.addElement(new P72(ss));
+                        case 88  -> defaultListModel.addElement(new P88(ss));
                         case 255 -> {
                             defaultListModel.addElement(new P255(ss));
                             keepParsing = false;
@@ -867,10 +867,10 @@ public class GUIHelper {
         if (originalHeight <= 0) return originalIcon;
 
         // Calculate new width to maintain aspect ratio
-        int newWidth = (int) ((double) originalWidth / originalHeight * (24));
+        int newWidth = (int) ((double) originalWidth / originalHeight * (23));
 
         // Scale the image
-        Image scaledImage = originalImage.getScaledInstance(newWidth, 24, Image.SCALE_SMOOTH);
+        Image scaledImage = originalImage.getScaledInstance(newWidth, 23, Image.SCALE_SMOOTH);
 
         BufferedImage bufferedImage;
 
@@ -918,8 +918,6 @@ public class GUIHelper {
                         path.contains("flags/cz.png") ||
                         path.contains("flags/england.png");
 
-
-
         for (int x = 0; x < bufferedImage.getWidth(); x++)
         {
             for (int y = 0; y < bufferedImage.getHeight(); y++) {
@@ -962,7 +960,7 @@ public class GUIHelper {
             }
         }
 
-        scaledImage = transparentImage.getScaledInstance(newWidth, 24, Image.SCALE_SMOOTH);
+        scaledImage = transparentImage.getScaledInstance(newWidth, 23, Image.SCALE_SMOOTH);
 
 
         return new ImageIcon(scaledImage);

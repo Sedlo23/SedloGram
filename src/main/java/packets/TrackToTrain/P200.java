@@ -43,7 +43,7 @@ public class P200 extends Packet {
         this.nid_vbcmk = (NID_VBCMK) new NID_VBCMK().initValueSet(d);
 
 
-        setIcon(loadAndScaleIcon("flags/pac/header.png"));
+        setIcon(loadAndScaleIcon("flags/pac/lid.png"));
     }
 
     @Override
